@@ -1,0 +1,24 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+/* Custom Scrollbar cho toàn bộ ứng dụng */
+::-webkit-scrollbar {
+    height: 6px;
+    /* Chiều cao thanh cuộn ngang */
+    width: 6px;
+    /* Chiều rộng thanh cuộn dọc */
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(212, 175, 55, 0.3);
+    /* Màu vps-gold nhưng hơi trong suốt */
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 175, 55, 0.7);
+}
