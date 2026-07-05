@@ -12,8 +12,12 @@ const firebaseConfig = {
     appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+// 1. App chính (Dùng để Admin đăng nhập và xài app)
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
+// 2. App phụ (CHỈ dùng để tạo tài khoản nhân viên mới mà không bị đăng xuất Admin)
+const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
+export const secondaryAuth = getAuth(secondaryApp);

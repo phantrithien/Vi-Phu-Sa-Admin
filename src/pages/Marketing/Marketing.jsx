@@ -14,6 +14,7 @@ import { db } from '../../config/firebase';
 // Thêm 2 dòng này vào dưới cùng của danh sách import
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Import Chart.js
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
@@ -22,6 +23,7 @@ import { Doughnut, Bar } from 'react-chartjs-2';
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
 
 const Marketing = () => {
+    const { userRole } = useAuth();
     const [activeTab, setActiveTab] = useState('campaigns');
     const [searchTerm, setSearchTerm] = useState('');
     const [filterOption, setFilterOption] = useState('All');
@@ -314,8 +316,22 @@ const Marketing = () => {
                                                 <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${item.status === 'Đang chạy' ? 'bg-blue-500/20 text-blue-400' : item.status === 'Hoàn thành' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>{item.status}</span>
                                             </td>
                                             <td className="p-4 flex justify-center gap-3">
-                                                <button onClick={() => openModal(item)} className="text-vps-gold hover:text-yellow-400"><Edit className="w-4 h-4" /></button>
-                                                <button onClick={() => handleDelete(item.id)} className="text-red-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                                                {/* KẾ TOÁN (back_office) KHÔNG THẤY NÚT NÀO CẢ */}
+                                                {userRole !== 'back_office' && (
+                                                    <>
+                                                        {/* Staff được bấm nút Sửa để cập nhật tiến độ */}
+                                                        <button onClick={() => openModal(item)} className="text-vps-gold hover:text-yellow-400">
+                                                            <Edit className="w-4 h-4" />
+                                                        </button>
+
+                                                        {/* NHƯNG Chỉ Quản lý & Founder mới thấy nút Xóa */}
+                                                        {['founder', 'front_office'].includes(userRole) && (
+                                                            <button onClick={() => handleDelete(item.id)} className="text-red-400 hover:text-red-500">
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </>
+                                                )}
                                             </td>
                                         </tr>
                                     )
@@ -609,10 +625,12 @@ const Marketing = () => {
                         </div>
                         <p className="text-sm md:text-base text-vps-ivory opacity-60 mt-1">Hệ thống CRM & Đo lường Tỉ lệ chuyển đổi chuyên sâu.</p>
                     </div>
-                    <button onClick={() => openModal()} className="w-full md:w-auto flex items-center justify-center gap-2 bg-vps-gold text-vps-black px-5 py-2.5 rounded-lg font-bold hover:bg-yellow-600 transition-all shadow-[0_0_15px_rgba(212,175,55,0.3)]">
-                        <Plus className="w-5 h-5" />
-                        <span>{activeTab === 'campaigns' ? 'Khởi tạo Chiến Dịch' : activeTab === 'customers' ? 'Thêm Lead/Khách' : 'Thêm Đối Thủ'}</span>
-                    </button>
+                    {['founder', 'front_office'].includes(userRole) && (
+                        <button onClick={() => openModal()} className="w-full md:w-auto flex items-center justify-center gap-2 bg-vps-gold text-vps-black px-5 py-2.5 rounded-lg font-bold hover:bg-yellow-600 transition-all shadow-[0_0_15px_rgba(212,175,55,0.3)]">
+                            <Plus className="w-5 h-5" />
+                            <span>{activeTab === 'campaigns' ? 'Khởi tạo Chiến Dịch' : activeTab === 'customers' ? 'Thêm Lead/Khách' : 'Thêm Đối Thủ'}</span>
+                        </button>
+                    )}
                 </div>
 
                 {/* Tab Navigation */}
@@ -779,7 +797,7 @@ const Marketing = () => {
                                 {/* Nút thao tác */}
                                 <div className="pt-6 border-t border-vps-gray flex gap-4">
                                     <button type="button" onClick={closeModal} className="w-1/3 px-4 py-3.5 border border-vps-gray text-vps-ivory rounded-xl font-bold hover:bg-[#252525] transition-colors">Hủy bỏ</button>
-                                    <button type="submit" className="w-2/3 px-4 py-3.5 bg-vps-gold text-vps-black rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-yellow-600 transition-colors shadow-lg"><Save className="w-5 h-5" /> Xác nhận Lưu Dữ liệu</button>
+                                    <button type="submit" className="w-2/3 px-4 py-3.5 bg-vps-gold text-vps-black rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-yellow-600 transition-colors shadow-lg"><Save className="w-5 h-5" />Lưu Dữ liệu</button>
                                 </div>
                             </form>
                         </div>
