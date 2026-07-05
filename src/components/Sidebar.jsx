@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Wallet, Users, Megaphone,
-    Clapperboard, CheckSquare, LogOut, Menu, X
+    Clapperboard, CheckSquare, LogOut, Menu, X, Lock
 } from 'lucide-react';
 import { auth } from '../config/firebase';
 import { signOut } from 'firebase/auth';
@@ -11,7 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 const Sidebar = () => {
     const [isOpen, setIsOpen] = useState(false);
     const navigate = useNavigate();
-    const { userRole, currentUser } = useAuth(); // Lấy quyền của người dùng
+    const { userRole, currentUser } = useAuth();
 
     const handleLogout = async () => {
         try {
@@ -22,89 +22,80 @@ const Sidebar = () => {
         }
     };
 
-    // Cấu hình menu và phân quyền
     const menuItems = [
         { path: '/', name: 'Tổng quan', icon: LayoutDashboard, roles: ['founder', 'back_office', 'front_office'] },
         { path: '/accounting', name: 'Hành chính & Kế toán', icon: Wallet, roles: ['founder', 'back_office'] },
         { path: '/hr', name: 'Nhân sự & Đào tạo', icon: Users, roles: ['founder', 'back_office'] },
-        // Back-office vẫn thấy Marketing/Sản xuất để click vào xem
         { path: '/marketing', name: 'Marketing & Sales', icon: Megaphone, roles: ['founder', 'front_office', 'staff', 'back_office'] },
         { path: '/production', name: 'Sản xuất', icon: Clapperboard, roles: ['founder', 'front_office', 'staff', 'back_office'] },
         { path: '/tasks', name: 'TaskBoard', icon: CheckSquare, roles: ['founder', 'back_office', 'front_office', 'staff', 'freelancer'] },
     ];
 
-    // Lọc ra các menu được phép xem
-    const allowedMenus = menuItems.filter(item => item.roles.includes(userRole));
-
     return (
         <>
-            {/* Nút mở menu trên Mobile */}
-            <button
-                onClick={() => setIsOpen(true)}
-                className="md:hidden fixed top-4 left-4 z-50 p-2 bg-[#1E1E1E] text-vps-gold rounded-lg border border-vps-gray shadow-lg"
-            >
+            {/* Nút Mobile */}
+            <button onClick={() => setIsOpen(true)} className="md:hidden fixed top-4 left-4 z-50 p-2 bg-[#1E1E1E]/80 backdrop-blur-md text-vps-gold rounded-xl border border-vps-gray shadow-lg">
                 <Menu className="w-6 h-6" />
             </button>
 
-            {/* Overlay */}
-            {isOpen && (
-                <div
-                    className="md:hidden fixed inset-0 bg-black/60 z-[60]"
-                    onClick={() => setIsOpen(false)}
-                />
-            )}
+            {/* Overlay Mobile */}
+            {isOpen && <div className="md:hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[60]" onClick={() => setIsOpen(false)} />}
 
             {/* Sidebar */}
-            <div className={`fixed inset-y-0 left-0 z-[70] w-64 bg-[#111111] border-r border-vps-gray transform transition-transform duration-300 ease-in-out flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+            <div className={`fixed inset-y-0 left-0 z-[70] w-64 bg-[#0A0A0A] border-r border-vps-gray/40 transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
 
-                {/* Logo & Close Button */}
-                <div className="h-20 flex items-center justify-between px-6 border-b border-vps-gray">
-                    <h2 className="text-2xl font-serif font-bold text-vps-gold tracking-wider">VỊ PHÙ SA</h2>
-                    <button onClick={() => setIsOpen(false)} className="md:hidden text-gray-400 hover:text-white">
+                {/* Logo */}
+                <div className="h-24 flex items-center justify-between px-8 border-b border-vps-gray/30">
+                    <div className="flex flex-col">
+                        <h2 className="text-2xl font-serif font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-vps-gold to-yellow-200 tracking-widest drop-shadow-sm">VỊ PHÙ SA</h2>
+                        <span className="text-[10px] text-vps-ivory/40 uppercase tracking-[0.2em] mt-1 font-medium">Administration</span>
+                    </div>
+                    <button onClick={() => setIsOpen(false)} className="md:hidden text-gray-500 hover:text-white transition-colors">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
 
-                {/* Danh sách Menu (Đã được lọc) */}
-                <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
-                    {allowedMenus.map((item) => {
+                {/* Menu */}
+                <nav className="flex-1 px-4 py-8 space-y-2.5 overflow-y-auto custom-scrollbar">
+                    {menuItems.map((item) => {
                         const Icon = item.icon;
+                        const hasAccess = item.roles.includes(userRole);
+
                         return (
                             <NavLink
                                 key={item.path}
                                 to={item.path}
                                 onClick={() => setIsOpen(false)}
                                 className={({ isActive }) =>
-                                    `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
-                                        ? 'bg-vps-gold text-vps-black font-bold shadow-[0_0_15px_rgba(212,175,55,0.3)]'
-                                        : 'text-vps-ivory/70 hover:bg-[#1E1E1E] hover:text-vps-gold'
-                                    }`
+                                    `flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 group relative overflow-hidden ${isActive
+                                        ? 'text-vps-gold bg-gradient-to-r from-vps-gold/15 to-transparent border-l-4 border-vps-gold shadow-[inset_0px_0px_20px_rgba(212,175,55,0.05)]'
+                                        : 'text-vps-ivory/60 hover:text-vps-ivory hover:bg-[#1A1A1A] border-l-4 border-transparent'
+                                    } ${!hasAccess ? 'opacity-50' : ''}`
                                 }
                             >
-                                <Icon className={`w-5 h-5 transition-transform duration-200 group-hover:scale-110`} />
-                                <span>{item.name}</span>
+                                <Icon className={`w-5 h-5 transition-transform duration-300 group-hover:scale-110 ${hasAccess ? 'group-hover:text-vps-gold' : ''}`} />
+                                <span className="flex-1 font-medium text-sm tracking-wide">{item.name}</span>
+
+                                {!hasAccess && <Lock className="w-4 h-4 text-gray-600" />}
                             </NavLink>
                         );
                     })}
                 </nav>
 
-                {/* Thông tin User & Đăng xuất */}
-                <div className="p-4 border-t border-vps-gray bg-[#0a0a0a]">
-                    <div className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl bg-[#1E1E1E] border border-vps-gray/50">
-                        <div className="w-8 h-8 rounded-full bg-vps-gold/20 flex items-center justify-center text-vps-gold font-bold">
+                {/* Footer User Profile */}
+                <div className="p-5 border-t border-vps-gray/30 bg-gradient-to-t from-black to-[#0A0A0A]">
+                    <div className="flex items-center gap-3 px-4 py-3 mb-3 rounded-xl bg-[#141414] border border-vps-gray/40 shadow-inner">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-vps-gold to-yellow-600 flex items-center justify-center text-[#111] font-bold shadow-lg shadow-vps-gold/20">
                             {currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'U'}
                         </div>
                         <div className="flex-1 overflow-hidden">
-                            <p className="text-xs text-vps-ivory font-medium truncate">{currentUser?.email}</p>
-                            <p className="text-[10px] text-vps-gold uppercase font-bold">{userRole}</p>
+                            <p className="text-sm text-vps-ivory font-semibold truncate">{currentUser?.email?.split('@')[0]}</p>
+                            <p className="text-[10px] text-vps-gold/80 uppercase font-bold tracking-wider">{userRole}</p>
                         </div>
                     </div>
-                    <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors"
-                    >
-                        <LogOut className="w-5 h-5" />
-                        <span className="font-medium">Đăng xuất</span>
+                    <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-3 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 font-medium text-sm group">
+                        <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                        <span>Đăng xuất hệ thống</span>
                     </button>
                 </div>
             </div>
