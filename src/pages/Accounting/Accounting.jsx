@@ -12,6 +12,7 @@ const Accounting = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('All');
+    const [marketingExpense, setMarketingExpense] = useState(0);
 
     // Quản lý trạng thái Modal Thêm/Sửa
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,6 +25,22 @@ const Accounting = () => {
         type: 'Thu',
         status: 'Đã thanh toán'
     });
+
+    useEffect(() => {
+        const unsubMarketing = onSnapshot(doc(db, 'accounting_sync', 'marketing_expenses'), (docSnap) => {
+            if (docSnap.exists()) {
+                // Tự động nhận số tiền Ngân sách tổng từ Marketing chuyển sang
+                setMarketingExpense(docSnap.data().amount || 0);
+            }
+        });
+        return () => unsubMarketing();
+    }, []);
+
+    // Lọc ra các giao dịch là "Chi" từ state transactions hiện tại
+    const localExpensesList = transactions.filter(tx => tx.type === 'Chi');
+
+    // Cộng tổng tiền chi nội bộ với tổng tiền marketing đồng bộ sang
+    const totalExpenses = localExpensesList.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) + marketingExpense;
 
     // Lấy dữ liệu từ Firebase
     useEffect(() => {
@@ -118,8 +135,23 @@ const Accounting = () => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num || 0);
     };
 
-    // Lọc dữ liệu
-    const filteredData = transactions.filter(tx => {
+    // Tạo một "giao dịch tự động" từ dữ liệu Marketing
+    const marketingTx = {
+        id: 'sync-marketing',
+        date: new Date().toISOString().split('T')[0], // Lấy ngày hiện tại
+        client: 'Phòng Marketing (Auto)',
+        description: 'Đồng bộ tự động tổng tiền đã giải ngân Ads',
+        amount: marketingExpense,
+        type: 'Chi',
+        status: 'Đã thanh toán',
+        isAutoSync: true // Cờ đánh dấu đây là dữ liệu tự động, không cho xóa/sửa
+    };
+
+    // Gộp giao dịch marketing vào đầu danh sách (nếu số tiền > 0)
+    const combinedTransactions = marketingExpense > 0 ? [marketingTx, ...transactions] : transactions;
+
+    // Lọc dữ liệu trên danh sách đã gộp
+    const filteredData = combinedTransactions.filter(tx => {
         const searchTarget = `${tx.client || ''} ${tx.description || ''}`.toLowerCase();
         const matchSearch = searchTarget.includes(searchTerm.toLowerCase());
         const matchType = filterType === 'All' ? true : tx.type === filterType;
@@ -136,7 +168,7 @@ const Accounting = () => {
                 <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-6 md:mb-8">
                     <div>
                         <div className="flex items-center gap-2">
-                            <h1 className="text-2xl md:text-3xl font-serif font-bold text-vps-gold">Quản lý Tài chính</h1>
+                            <h1 className="text-2xl md:text-3xl font-serif font-bold text-vps-gold">Hành chính và kế toán</h1>
                             <Cloud className="w-5 h-5 text-green-500" title="Đã đồng bộ với Cloud" />
                         </div>
                         <p className="text-sm md:text-base text-vps-ivory opacity-60 mt-1">Theo dõi dòng tiền và giao dịch nội bộ.</p>
@@ -217,8 +249,14 @@ const Accounting = () => {
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex items-center justify-center gap-3">
-                                                    <button onClick={() => openModal(tx)} className="text-vps-gold opacity-70 hover:opacity-100"><Edit className="w-4 h-4" /></button>
-                                                    <button onClick={() => handleDelete(tx.id, tx.client || 'Giao dịch không tên')} className="text-red-400 opacity-70 hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+                                                    {tx.isAutoSync ? (
+                                                        <span className="text-[10px] text-green-400 font-bold bg-green-500/10 px-2 py-1 rounded">Auto</span>
+                                                    ) : (
+                                                        <>
+                                                            <button onClick={() => openModal(tx)} className="text-vps-gold opacity-70 hover:opacity-100"><Edit className="w-4 h-4" /></button>
+                                                            <button onClick={() => handleDelete(tx.id, tx.client || 'Giao dịch không tên')} className="text-red-400 opacity-70 hover:opacity-100"><Trash2 className="w-4 h-4" /></button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>

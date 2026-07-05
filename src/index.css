@@ -22,3 +22,56 @@
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(212, 175, 55, 0.7);
 }
+
+
+/* Đổi màu nền, viền và bo góc thanh công cụ */
+.quill-dark-theme .ql-toolbar.ql-snow {
+    background-color: #1A1A1A;
+    /* Trùng màu nền form */
+    border: 1px solid #3f3f46;
+    /* Trùng viền vps-gray */
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+}
+
+/* Đổi màu nền, viền, bo góc và màu chữ khu vực gõ văn bản */
+.quill-dark-theme .ql-container.ql-snow {
+    background-color: #1A1A1A;
+    border: 1px solid #3f3f46;
+    border-top: none;
+    border-bottom-left-radius: 0.5rem;
+    border-bottom-right-radius: 0.5rem;
+    color: #f5f5f0;
+    /* Mã text-vps-ivory */
+    font-family: inherit;
+    min-height: 100px;
+    /* Cho nó cao lên chút gõ cho thoải mái */
+}
+
+/* Đổi màu chữ Placeholder mờ đi */
+.quill-dark-theme .ql-editor.ql-blank::before {
+    color: #6b7280;
+    font-style: normal;
+}
+
+/* Nhuộm trắng các Icon (in đậm, in nghiêng, list...) */
+.quill-dark-theme .ql-snow .ql-stroke {
+    stroke: #d1d5db;
+}
+
+.quill-dark-theme .ql-snow .ql-fill,
+.quill-dark-theme .ql-snow .ql-stroke.ql-fill {
+    fill: #d1d5db;
+}
+
+/* Đổi màu chữ của Dropdown (VD: chữ Normal) */
+.quill-dark-theme .ql-snow .ql-picker {
+    color: #d1d5db;
+}
+
+/* Đổi màu nền list thả xuống khi bấm vào Dropdown */
+.quill-dark-theme .ql-snow .ql-picker-options {
+    background-color: #262626;
+    border: 1px solid #3f3f46;
+    color: #f5f5f0;
+}

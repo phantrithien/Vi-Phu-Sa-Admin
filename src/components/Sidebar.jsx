@@ -25,7 +25,7 @@ const Sidebar = () => {
 
     const menuItems = [
         { path: '/', icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
-        { path: '/accounting', icon: <Calculator className="w-5 h-5" />, label: 'Hành chính - Kế toán' },
+        { path: '/accounting', icon: <Calculator className="w-5 h-5" />, label: 'Hành chính & Kế toán' },
         { path: '/hr', icon: <Users className="w-5 h-5" />, label: 'Nhân sự & Đào tạo' },
         { path: '/marketing', icon: <Megaphone className="w-5 h-5" />, label: 'Marketing & Sales' },
         { path: '/production', icon: <Video className="w-5 h-5" />, label: 'Vận hành Sản xuất' },

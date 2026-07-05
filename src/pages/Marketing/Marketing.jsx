@@ -8,8 +8,12 @@ import {
     Zap, Award, BarChart3, Crosshair, Filter,
     Building2, Smartphone
 } from 'lucide-react';
-import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+
+// Thêm 2 dòng này vào dưới cùng của danh sách import
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 
 // Import Chart.js
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
@@ -20,6 +24,7 @@ ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarEle
 const Marketing = () => {
     const [activeTab, setActiveTab] = useState('campaigns');
     const [searchTerm, setSearchTerm] = useState('');
+    const [filterOption, setFilterOption] = useState('All');
     const [loading, setLoading] = useState(true);
 
     const [campaigns, setCampaigns] = useState([]);
@@ -30,14 +35,50 @@ const Marketing = () => {
     const [editingId, setEditingId] = useState(null);
     const [formData, setFormData] = useState({});
 
+    const [draggingSpent, setDraggingSpent] = useState({});
+
+    useEffect(() => {
+        setFilterOption('All');
+    }, [activeTab]);
+
+    // === CHÈN ĐOẠN NÀY VÀO ĐÂY ===
+    // Cấu hình các công cụ cho Editor (In đậm, màu sắc, list...)
+    const quillModules = {
+        toolbar: [
+            [{ 'header': [1, 2, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ 'color': [] }, { 'background': [] }],
+            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+            ['clean']
+        ],
+    };
+    // ============================
+
     const formatCurrency = (value) => {
         const num = typeof value === 'string' ? parseInt(value.replace(/[^0-9]/g, ''), 10) : value;
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num || 0);
     };
 
     useEffect(() => {
-        const unsubCampaigns = onSnapshot(collection(db, 'marketing_campaigns'), (snap) => {
-            setCampaigns(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const unsubCampaigns = onSnapshot(collection(db, 'marketing_campaigns'), async (snap) => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            setCampaigns(list);
+
+            // 1. Tính TỔNG SỐ TIỀN ĐÃ CHI (spent) thay vì Ngân sách
+            const totalSpent = list.reduce((sum, c) => sum + (Number(c.spent) || 0), 0);
+
+            // 2. Ghi đè tổng chi phí thực tế này sang Kế toán
+            try {
+                await setDoc(doc(db, 'accounting_sync', 'marketing_expenses'), {
+                    name: 'Tổng chi phí thực tế Marketing',
+                    amount: totalSpent,
+                    type: 'chi_phi',
+                    category: 'Marketing',
+                    updatedAt: Date.now()
+                }, { merge: true });
+            } catch (error) {
+                console.error("Lỗi tự động đồng bộ sang Kế toán:", error);
+            }
         });
 
         const unsubCustomers = onSnapshot(collection(db, 'customer_care'), (snap) => {
@@ -196,8 +237,15 @@ const Marketing = () => {
     };
 
     // --- RENDER BẢNG DỮ LIỆU ---
+    // --- RENDER BẢNG CHIẾN DỊCH (Đã tích hợp Lọc & Slider Kéo thả) ---
     const renderCampaigns = () => {
-        const filtered = campaigns.filter(c => (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
+        // 1. Logic lọc kết hợp tìm kiếm và trạng thái
+        const filtered = campaigns.filter(c => {
+            const matchSearch = (c.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+            const matchFilter = filterOption === 'All' || c.status === filterOption;
+            return matchSearch && matchFilter;
+        });
+
         return (
             <div className="bg-[#1E1E1E] border border-vps-gray rounded-xl shadow-lg overflow-hidden animate-fadeIn">
                 {/* Bản Desktop */}
@@ -215,8 +263,11 @@ const Marketing = () => {
                         <tbody className="divide-y divide-vps-gray/40">
                             {filtered.length === 0 ? <tr><td colSpan="5" className="p-6 text-center text-vps-ivory/40">Chưa có dữ liệu.</td></tr> :
                                 filtered.map(item => {
-                                    const percent = item.budget ? Math.min(Math.round((item.spent / item.budget) * 100), 100) : 0;
+                                    // Tính toán các chỉ số cho từng item
                                     const cpl = item.leads > 0 ? Math.round(item.spent / item.leads) : 0;
+                                    const currentSpent = draggingSpent[item.id] !== undefined ? draggingSpent[item.id] : (item.spent || 0);
+                                    const percent = item.budget ? Math.min(Math.round((currentSpent / item.budget) * 100), 100) : 0;
+
                                     return (
                                         <tr key={item.id} className="hover:bg-[#252525] transition-colors">
                                             <td className="p-4">
@@ -229,13 +280,36 @@ const Marketing = () => {
                                                 <div className="flex gap-2"><span className="text-gray-400">CPL:</span> <span className="text-orange-400">{formatCurrency(cpl)}/lead</span></div>
                                                 {item.kpi && <div className="text-gray-500 italic truncate w-32" title={item.kpi}>Mục tiêu: {item.kpi}</div>}
                                             </td>
+
+                                            {/* CỘT THANH TRƯỢT DESKTOP */}
                                             <td className="p-4">
                                                 <div className="flex justify-between text-[10px] mb-1">
-                                                    <span className="text-orange-400 font-medium">{formatCurrency(item.spent)}</span>
-                                                    <span className="text-gray-500">{formatCurrency(item.budget)}</span>
+                                                    <span className="text-orange-400 font-medium">Đã tiêu: {formatCurrency(currentSpent)}</span>
+                                                    <span className="text-gray-500">Hạn mức: {formatCurrency(item.budget)}</span>
                                                 </div>
-                                                <div className="w-full bg-vps-gray rounded-full h-1.5"><div className={`h-1.5 rounded-full ${percent > 90 ? 'bg-red-500' : 'bg-green-400'}`} style={{ width: `${percent}%` }}></div></div>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max={item.budget || 0}
+                                                        value={currentSpent}
+                                                        onChange={(e) => setDraggingSpent({ ...draggingSpent, [item.id]: parseInt(e.target.value, 10) || 0 })}
+                                                        onMouseUp={async () => {
+                                                            if (draggingSpent[item.id] !== undefined) {
+                                                                await updateDoc(doc(db, 'marketing_campaigns', item.id), { spent: draggingSpent[item.id] });
+                                                            }
+                                                        }}
+                                                        onTouchEnd={async () => {
+                                                            if (draggingSpent[item.id] !== undefined) {
+                                                                await updateDoc(doc(db, 'marketing_campaigns', item.id), { spent: draggingSpent[item.id] });
+                                                            }
+                                                        }}
+                                                        className="w-full accent-orange-400 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                                                    />
+                                                    <span className="text-[10px] text-gray-400 font-bold min-w-[28px] text-right">{percent}%</span>
+                                                </div>
                                             </td>
+
                                             <td className="p-4 text-center">
                                                 <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${item.status === 'Đang chạy' ? 'bg-blue-500/20 text-blue-400' : item.status === 'Hoàn thành' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>{item.status}</span>
                                             </td>
@@ -249,12 +323,15 @@ const Marketing = () => {
                         </tbody>
                     </table>
                 </div>
+
                 {/* Bản Mobile */}
                 <div className="md:hidden flex flex-col divide-y divide-vps-gray/40">
                     {filtered.length === 0 ? <div className="p-6 text-center text-vps-ivory/40">Chưa có dữ liệu.</div> :
                         filtered.map(item => {
-                            const percent = item.budget ? Math.min(Math.round((item.spent / item.budget) * 100), 100) : 0;
                             const cpl = item.leads > 0 ? Math.round(item.spent / item.leads) : 0;
+                            const currentSpentMobile = draggingSpent[item.id] !== undefined ? draggingSpent[item.id] : (item.spent || 0);
+                            const percentMobile = item.budget ? Math.min(Math.round((currentSpentMobile / item.budget) * 100), 100) : 0;
+
                             return (
                                 <div key={item.id} className="p-4 flex flex-col gap-3">
                                     <div className="flex justify-between items-start">
@@ -268,13 +345,36 @@ const Marketing = () => {
                                         <div><span className="text-gray-400">Leads:</span> <strong className="text-vps-gold">{item.leads || 0}</strong></div>
                                         <div><span className="text-gray-400">CPL:</span> <strong className="text-orange-400">{formatCurrency(cpl)}</strong></div>
                                     </div>
+
+                                    {/* CỘT THANH TRƯỢT MOBILE */}
                                     <div>
                                         <div className="flex justify-between text-[10px] mb-1">
-                                            <span className="text-orange-400 font-medium">{formatCurrency(item.spent)}</span>
-                                            <span className="text-gray-500">{formatCurrency(item.budget)}</span>
+                                            <span className="text-orange-400 font-medium">Đã tiêu: {formatCurrency(currentSpentMobile)}</span>
+                                            <span className="text-gray-500">Hạn mức: {formatCurrency(item.budget)}</span>
                                         </div>
-                                        <div className="w-full bg-vps-gray rounded-full h-1.5"><div className={`h-1.5 rounded-full ${percent > 90 ? 'bg-red-500' : 'bg-green-400'}`} style={{ width: `${percent}%` }}></div></div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max={item.budget || 0}
+                                                value={currentSpentMobile}
+                                                onChange={(e) => setDraggingSpent({ ...draggingSpent, [item.id]: parseInt(e.target.value, 10) || 0 })}
+                                                onMouseUp={async () => {
+                                                    if (draggingSpent[item.id] !== undefined) {
+                                                        await updateDoc(doc(db, 'marketing_campaigns', item.id), { spent: draggingSpent[item.id] });
+                                                    }
+                                                }}
+                                                onTouchEnd={async () => {
+                                                    if (draggingSpent[item.id] !== undefined) {
+                                                        await updateDoc(doc(db, 'marketing_campaigns', item.id), { spent: draggingSpent[item.id] });
+                                                    }
+                                                }}
+                                                className="w-full accent-orange-400 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                                            />
+                                            <span className="text-[10px] text-gray-400 font-bold min-w-[28px] text-right">{percentMobile}%</span>
+                                        </div>
                                     </div>
+
                                     <div className="flex justify-end gap-3 mt-2 border-t border-vps-gray/30 pt-3">
                                         <button onClick={() => openModal(item)} className="flex items-center gap-1 text-xs text-vps-gold"><Edit className="w-3 h-3" /> Sửa</button>
                                         <button onClick={() => handleDelete(item.id)} className="flex items-center gap-1 text-xs text-red-400"><Trash2 className="w-3 h-3" /> Xóa</button>
@@ -289,7 +389,11 @@ const Marketing = () => {
     };
 
     const renderCustomers = () => {
-        const filtered = customers.filter(c => (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
+        const filtered = customers.filter(c => {
+            const matchSearch = (c.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+            const matchFilter = filterOption === 'All' || c.pipeline === filterOption;
+            return matchSearch && matchFilter;
+        });
         return (
             <div className="bg-[#1E1E1E] border border-vps-gray rounded-xl shadow-lg overflow-hidden animate-fadeIn">
                 {/* Bản Desktop */}
@@ -391,7 +495,11 @@ const Marketing = () => {
     }
 
     const renderCompetitors = () => {
-        const filtered = competitors.filter(c => (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
+        const filtered = competitors.filter(c => {
+            const matchSearch = (c.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+            const matchFilter = filterOption === 'All' || c.threatLevel === filterOption;
+            return matchSearch && matchFilter;
+        });
         return (
             <div className="bg-[#1E1E1E] border border-vps-gray rounded-xl shadow-lg overflow-hidden animate-fadeIn">
                 {/* Bản Desktop */}
@@ -415,8 +523,8 @@ const Marketing = () => {
                                         </td>
                                         <td className="p-4">
                                             <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded border ${item.threatLevel === 'Cao' ? 'bg-red-500/10 border-red-500/50 text-red-400' :
-                                                    item.threatLevel === 'Trung bình' ? 'bg-orange-500/10 border-orange-500/50 text-orange-400' :
-                                                        'bg-green-500/10 border-green-500/50 text-green-400'
+                                                item.threatLevel === 'Trung bình' ? 'bg-orange-500/10 border-orange-500/50 text-orange-400' :
+                                                    'bg-green-500/10 border-green-500/50 text-green-400'
                                                 }`}>{item.threatLevel || 'Chưa rõ'}</span>
                                         </td>
                                         <td className="p-4 text-sm font-medium text-vps-gold">
@@ -424,8 +532,18 @@ const Marketing = () => {
                                         </td>
                                         <td className="p-4 text-sm text-gray-400">
                                             <div className="flex flex-col gap-1">
-                                                {item.strength && <div className="line-clamp-1"><span className="text-green-400 font-bold">+</span> {item.strength}</div>}
-                                                {item.weakness && <div className="line-clamp-1"><span className="text-red-400 font-bold">-</span> {item.weakness}</div>}
+                                                {item.strength && (
+                                                    <div className="flex gap-2 items-start line-clamp-2">
+                                                        <span className="text-green-400 font-bold mt-0.5">+</span>
+                                                        <div dangerouslySetInnerHTML={{ __html: item.strength }} className="text-xs" />
+                                                    </div>
+                                                )}
+                                                {item.weakness && (
+                                                    <div className="flex gap-2 items-start line-clamp-2 mt-1">
+                                                        <span className="text-red-400 font-bold mt-0.5">-</span>
+                                                        <div dangerouslySetInnerHTML={{ __html: item.weakness }} className="text-xs" />
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="p-4 flex justify-center gap-3">
@@ -446,14 +564,24 @@ const Marketing = () => {
                                 <div className="flex justify-between items-center">
                                     <div className="font-bold text-vps-ivory text-lg">{item.name}</div>
                                     <span className={`text-[10px] font-bold px-2 py-1 rounded border ${item.threatLevel === 'Cao' ? 'bg-red-500/10 border-red-500/50 text-red-400' :
-                                            item.threatLevel === 'Trung bình' ? 'bg-orange-500/10 border-orange-500/50 text-orange-400' :
-                                                'bg-green-500/10 border-green-500/50 text-green-400'
+                                        item.threatLevel === 'Trung bình' ? 'bg-orange-500/10 border-orange-500/50 text-orange-400' :
+                                            'bg-green-500/10 border-green-500/50 text-green-400'
                                         }`}>{item.threatLevel || 'Chưa rõ'}</span>
                                 </div>
                                 <div className="text-sm font-medium text-vps-gold">Phân khúc: {item.pricing || 'Tầm trung'}</div>
                                 <div className="text-xs text-gray-400 bg-[#1A1A1A] p-3 rounded flex flex-col gap-1.5">
-                                    {item.strength && <div><span className="text-green-400 font-bold mr-1">+</span>{item.strength}</div>}
-                                    {item.weakness && <div><span className="text-red-400 font-bold mr-1">-</span>{item.weakness}</div>}
+                                    {item.strength && (
+                                        <div className="flex gap-1.5 items-start">
+                                            <span className="text-green-400 font-bold">+</span>
+                                            <div dangerouslySetInnerHTML={{ __html: item.strength }} className="text-xs" />
+                                        </div>
+                                    )}
+                                    {item.weakness && (
+                                        <div className="flex gap-1.5 items-start mt-1">
+                                            <span className="text-red-400 font-bold">-</span>
+                                            <div dangerouslySetInnerHTML={{ __html: item.weakness }} className="text-xs" />
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="flex justify-end gap-3 mt-2 border-t border-vps-gray/30 pt-3">
                                     <button onClick={() => openModal(item)} className="flex items-center gap-1 text-xs text-vps-gold"><Edit className="w-3 h-3" /> Sửa</button>
@@ -476,7 +604,7 @@ const Marketing = () => {
                 <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-6 md:mb-8">
                     <div>
                         <div className="flex items-center gap-2">
-                            <h1 className="text-2xl md:text-3xl font-serif font-bold text-vps-gold">Marketing & Sales Pro</h1>
+                            <h1 className="text-2xl md:text-3xl font-serif font-bold text-vps-gold">Marketing & Sales</h1>
                             <Cloud className="w-5 h-5 text-green-500" title="Đã đồng bộ với Cloud" />
                         </div>
                         <p className="text-sm md:text-base text-vps-ivory opacity-60 mt-1">Hệ thống CRM & Đo lường Tỉ lệ chuyển đổi chuyên sâu.</p>
@@ -501,9 +629,42 @@ const Marketing = () => {
                 <div className="flex gap-3 mb-6">
                     <div className="relative flex-1">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                        <input type="text" placeholder={`Tìm kiếm dữ liệu ${activeTab}...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[#1E1E1E] border border-vps-gray rounded-xl pl-12 pr-4 py-3 text-vps-ivory focus:outline-none focus:border-vps-gold text-sm shadow-inner" />
+                        <input type="text" placeholder={`Tìm kiếm dữ liệu...`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[#1E1E1E] border border-vps-gray rounded-xl pl-12 pr-4 py-3 text-vps-ivory focus:outline-none focus:border-vps-gold text-sm shadow-inner" />
                     </div>
-                    <button className="px-4 py-3 bg-[#1E1E1E] border border-vps-gray rounded-xl text-vps-ivory hover:border-vps-gold transition-colors"><Filter className="w-5 h-5" /></button>
+
+                    {/* Nút Lọc (Dropdown động theo Tab) */}
+                    <div className="relative min-w-[160px]">
+                        <select
+                            value={filterOption}
+                            onChange={(e) => setFilterOption(e.target.value)}
+                            className="w-full appearance-none h-full px-4 py-3 pr-10 bg-[#1E1E1E] border border-vps-gray rounded-xl text-vps-ivory hover:border-vps-gold focus:outline-none focus:border-vps-gold transition-colors cursor-pointer text-sm font-medium"
+                        >
+                            <option value="All">Tất cả trạng thái</option>
+                            {activeTab === 'campaigns' && (
+                                <>
+                                    <option value="Đang chạy">Trạng thái: Đang chạy</option>
+                                    <option value="Hoàn thành">Trạng thái: Hoàn thành</option>
+                                    <option value="Tạm dừng">Trạng thái: Tạm dừng</option>
+                                </>
+                            )}
+                            {activeTab === 'customers' && (
+                                <>
+                                    <option value="Khách mới">Phễu: Khách mới</option>
+                                    <option value="Đang tư vấn">Phễu: Đang tư vấn</option>
+                                    <option value="Đã chốt">Phễu: Đã chốt</option>
+                                    <option value="Thất bại">Phễu: Thất bại</option>
+                                </>
+                            )}
+                            {activeTab === 'competitors' && (
+                                <>
+                                    <option value="Thấp">Đe dọa: Thấp</option>
+                                    <option value="Trung bình">Đe dọa: Trung bình</option>
+                                    <option value="Cao">Đe dọa: Cao</option>
+                                </>
+                            )}
+                        </select>
+                        <Filter className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                    </div>
                 </div>
 
                 {/* Nội dung danh sách */}
@@ -584,8 +745,32 @@ const Marketing = () => {
                                                     <option>Giá rẻ</option><option>Tầm trung</option><option>Cao cấp</option>
                                                 </select>
                                             </div>
-                                            <div className="col-span-2"><label className="text-xs font-bold text-green-400 mb-1.5 block">Điểm mạnh (Strengths)</label><textarea className="w-full bg-[#1A1A1A] border border-vps-gray rounded-lg p-3 text-vps-ivory focus:border-green-400 outline-none resize-none" rows="2" value={formData.strength || ''} onChange={e => setFormData({ ...formData, strength: e.target.value })} placeholder="Ưu thế của đối thủ..." /></div>
-                                            <div className="col-span-2"><label className="text-xs font-bold text-red-400 mb-1.5 block">Điểm yếu (Weaknesses)</label><textarea className="w-full bg-[#1A1A1A] border border-vps-gray rounded-lg p-3 text-vps-ivory focus:border-red-400 outline-none resize-none" rows="2" value={formData.weakness || ''} onChange={e => setFormData({ ...formData, weakness: e.target.value })} placeholder="Hạn chế mà ta có thể khai thác..." /></div>
+                                            <div className="col-span-2">
+                                                <label className="text-xs font-bold text-green-400 mb-1.5 block">Điểm mạnh (Strengths)</label>
+                                                <div className="quill-dark-theme">
+                                                    <ReactQuill
+                                                        theme="snow"
+                                                        modules={quillModules}
+                                                        value={formData.strength || ''}
+                                                        onChange={val => setFormData({ ...formData, strength: val })}
+                                                        placeholder="Ghi chú ưu thế của đối thủ (có thể đổi màu, in đậm)..."
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Phần Điểm yếu */}
+                                            <div className="col-span-2">
+                                                <label className="text-xs font-bold text-red-400 mb-1.5 block">Điểm yếu (Weaknesses)</label>
+                                                <div className="quill-dark-theme mt-1">
+                                                    <ReactQuill
+                                                        theme="snow"
+                                                        modules={quillModules}
+                                                        value={formData.weakness || ''}
+                                                        onChange={val => setFormData({ ...formData, weakness: val })}
+                                                        placeholder="Hạn chế mà ta có thể khai thác..."
+                                                    />
+                                                </div>
+                                            </div>
                                             <div className="col-span-2"><label className="text-xs font-bold text-blue-400 mb-1.5 block">Kế hoạch đối phó (Action Plan)</label><textarea className="w-full bg-[#1A1A1A] border border-vps-gray rounded-lg p-3 text-vps-ivory focus:border-blue-400 outline-none resize-none" rows="2" value={formData.actionPlan || ''} onChange={e => setFormData({ ...formData, actionPlan: e.target.value })} placeholder="Chiến lược cạnh tranh..." /></div>
                                         </div>
                                     </>

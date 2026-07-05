@@ -30,11 +30,14 @@ const Dashboard = () => {
         let totalInc = 0;
         let totalExpTx = 0;
         let totalExpPayroll = 0;
+        let totalExpMarketing = 0; // Thêm biến lưu tiền Marketing
         let txList = [];
         let prList = [];
+        let marketingAct = null; // Thêm biến lưu dòng giao dịch Marketing
 
         const updateDashboardData = () => {
-            const totalExp = totalExpTx + totalExpPayroll;
+            // Cộng thêm cả chi phí Marketing vào Tổng Chi
+            const totalExp = totalExpTx + totalExpPayroll + totalExpMarketing;
             setFinanceStats({ balance: totalInc - totalExp, income: totalInc, expense: totalExp });
 
             const formattedTx = txList.map(t => ({
@@ -59,7 +62,11 @@ const Dashboard = () => {
                 timestamp: p.timestamp || 0
             }));
 
-            const combined = [...formattedTx, ...formattedPayroll]
+            // Gom tất cả vào chung 1 mảng
+            let allActivities = [...formattedTx, ...formattedPayroll];
+            if (marketingAct) allActivities.push(marketingAct);
+
+            const combined = allActivities
                 .sort((a, b) => b.timestamp - a.timestamp)
                 .slice(0, 5);
 
@@ -75,16 +82,11 @@ const Dashboard = () => {
 
             snapshot.forEach(doc => {
                 const data = doc.data();
-
-                // Ép kiểu chống dính chữ
                 const amountStr = data.amount ? String(data.amount) : "0";
                 const amount = parseInt(amountStr.replace(/[^0-9]/g, ''), 10) || 0;
-
-                // Chuẩn hóa chuỗi (Bỏ khoảng trắng 2 đầu và đưa về chữ thường)
                 const typeStr = String(data.type || '').trim().toLowerCase();
                 const statusStr = String(data.status || '').trim().toLowerCase();
 
-                // Logic Bộ lọc: Bao trọn mọi trường hợp Đã thanh toán
                 if (typeStr === 'thu' && statusStr === 'đã thanh toán') {
                     inc += amount;
                 }
@@ -129,10 +131,39 @@ const Dashboard = () => {
             }
         });
 
+        // 4. Marketing (Lắng nghe dữ liệu tự động đồng bộ)
+        const unsubMarketing = onSnapshot(doc(db, 'accounting_sync', 'marketing_expenses'), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const amount = Number(data.amount) || 0;
+                totalExpMarketing = amount;
+
+                if (amount > 0) {
+                    marketingAct = {
+                        id: 'sync-marketing',
+                        title: '[Marketing] Đồng bộ chi phí Ads',
+                        amount: amount,
+                        type: 'Chi',
+                        date: new Date(data.updatedAt || Date.now()).toISOString().split('T')[0],
+                        status: 'Đã thanh toán',
+                        source: 'Marketing',
+                        timestamp: data.updatedAt || Date.now() // Dùng để sort mới nhất
+                    };
+                } else {
+                    marketingAct = null;
+                }
+            } else {
+                totalExpMarketing = 0;
+                marketingAct = null;
+            }
+            updateDashboardData();
+        });
+
         return () => {
             unsubFinance();
             unsubPayroll();
             unsubTasks();
+            unsubMarketing();
         };
     }, []);
 
@@ -279,7 +310,10 @@ const Dashboard = () => {
                                         <div key={act.id} className="p-4 hover:bg-[#252525] transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm gap-3 sm:gap-0">
                                             <div className="space-y-2 sm:space-y-1 w-full sm:w-auto">
                                                 <div className="flex items-start sm:items-center gap-2 flex-wrap">
-                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide shrink-0 ${act.source === 'Kế toán' ? 'bg-amber-900/40 text-vps-gold' : 'bg-purple-900/40 text-purple-300'}`}>
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide shrink-0 
+                                                        ${act.source === 'Kế toán' ? 'bg-amber-900/40 text-vps-gold' :
+                                                            act.source === 'Nhân sự' ? 'bg-purple-900/40 text-purple-300' :
+                                                                'bg-blue-900/40 text-blue-400'}`}>
                                                         {act.source}
                                                     </span>
                                                     <span className="text-vps-ivory font-medium break-words max-w-full line-clamp-2">{act.title}</span>
