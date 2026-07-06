@@ -327,8 +327,31 @@ const HR = () => {
                             <form onSubmit={handleSave} className="p-7 space-y-6">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Họ và tên *</label>
-                                    <input type="text" required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        className="w-full bg-[#111] border border-vps-gray/20 rounded-xl p-3.5 text-vps-ivory focus:border-vps-gold outline-none transition-colors" placeholder="Nguyễn Văn A..." />
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.name}
+                                        onChange={(e) => {
+                                            const newName = e.target.value;
+                                            let updatedData = { ...formData, name: newName };
+
+                                            // Chỉ tự động tạo email khi đang thêm mới (không áp dụng khi đang edit hồ sơ cũ)
+                                            if (!editingId) {
+                                                const autoEmail = newName
+                                                    .normalize('NFD') // Phân tách chữ và dấu
+                                                    .replace(/[\u0300-\u036f]/g, '') // Xóa các dấu
+                                                    .replace(/đ/g, 'd').replace(/Đ/g, 'D') // Xử lý riêng ký tự đ/Đ của tiếng Việt
+                                                    .replace(/\s+/g, '') // Xóa toàn bộ khoảng trắng
+                                                    .toLowerCase(); // Chuyển thành chữ thường
+
+                                                updatedData.email = autoEmail ? `${autoEmail}@viphusa.com` : '';
+                                            }
+
+                                            setFormData(updatedData);
+                                        }}
+                                        className="w-full bg-[#111] border border-vps-gray/20 rounded-xl p-3.5 text-vps-ivory focus:border-vps-gold outline-none transition-colors"
+                                        placeholder="Nguyễn Văn A..."
+                                    />
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

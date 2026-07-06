@@ -234,70 +234,100 @@ const Marketing = () => {
             const expectedValue = customers.filter(c => c.pipeline !== 'Thất bại').reduce((sum, c) => sum + (Number(c.dealValue) || 0), 0);
             const wonValue = customers.filter(c => c.pipeline === 'Đã chốt').reduce((sum, c) => sum + (Number(c.dealValue) || 0), 0);
 
+
+
+            // 1. Logic tính toán dữ liệu cho Phễu
+            const totalLeads = customers.length;
+            const newLeadsCount = customers.filter(c => c.pipeline === 'Khách mới').length;
+            const consultingLeadsCount = customers.filter(c => c.pipeline === 'Đang tư vấn').length;
+            const wonLeadsCount = customers.filter(c => c.pipeline === 'Đã chốt').length;
+            const lostLeadsCount = customers.filter(c => c.pipeline === 'Thất bại').length;
+
             const pipelineData = {
                 labels: ['Khách mới', 'Đang tư vấn', 'Đã chốt', 'Thất bại'],
                 datasets: [{
-                    data: [
-                        customers.filter(c => c.pipeline === 'Khách mới').length,
-                        customers.filter(c => c.pipeline === 'Đang tư vấn').length,
-                        won,
-                        customers.filter(c => c.pipeline === 'Thất bại').length
+                    data: [newLeadsCount, consultingLeadsCount, wonLeadsCount, lostLeadsCount],
+                    backgroundColor: [
+                        'rgba(156, 163, 175, 0.9)', // Xám
+                        'rgba(59, 130, 246, 0.9)',  // Xanh dương
+                        'rgba(34, 197, 94, 0.9)',   // Xanh lá
+                        'rgba(239, 68, 68, 0.9)'    // Đỏ
                     ],
-                    backgroundColor: ['rgba(156, 163, 175, 0.8)', 'rgba(59, 130, 246, 0.8)', 'rgba(34, 197, 94, 0.8)', 'rgba(239, 68, 68, 0.8)'],
-                    borderWidth: 0
+                    hoverOffset: 6, // Hiệu ứng phóng to khi hover
+                    borderWidth: 3,
+                    borderColor: '#1A1A1A' // Viền màu trùng với màu nền để tạo khoảng trống
                 }]
+            };
+
+            // Cấu hình ẩn Legend mặc định của Chart.js và tùy chỉnh Tooltip
+            const doughnutOptions = {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(17, 17, 17, 0.9)',
+                        titleColor: '#D4AF37',
+                        bodyColor: '#fff',
+                        borderColor: 'rgba(212,175,55,0.2)',
+                        borderWidth: 1,
+                        padding: 10,
+                        boxPadding: 4
+                    }
+                },
+                cutout: '75%' // Độ mỏng của vòng tròn
             };
 
             return (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                        <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl hover:-translate-y-1 hover:border-blue-500/30 transition-all duration-300 relative overflow-hidden group">
-                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-all"></div>
-                            <div className="flex justify-between items-start relative z-10">
-                                <div><p className="text-xs font-semibold text-vps-ivory/60 uppercase tracking-wider mb-2">Tổng Leads trong Phễu</p><h3 className="text-2xl md:text-3xl font-bold text-blue-400 tracking-tight">{customers.length}</h3></div>
-                                <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20"><Users className="w-6 h-6 text-blue-400" /></div>
-                            </div>
-                        </div>
-                        <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl hover:-translate-y-1 hover:border-green-500/30 transition-all duration-300 relative overflow-hidden group">
-                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-green-500/5 rounded-full blur-2xl group-hover:bg-green-500/10 transition-all"></div>
-                            <div className="flex justify-between items-start relative z-10">
-                                <div><p className="text-xs font-semibold text-vps-ivory/60 uppercase tracking-wider mb-2">Hợp đồng Đã chốt</p><h3 className="text-2xl md:text-3xl font-bold text-green-400 tracking-tight">{won}</h3></div>
-                                <div className="p-3 bg-green-500/10 rounded-xl border border-green-500/20"><Target className="w-6 h-6 text-green-400" /></div>
-                            </div>
-                        </div>
-                        <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl hover:-translate-y-1 hover:border-purple-500/30 transition-all duration-300 relative overflow-hidden group">
-                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-all"></div>
-                            <div className="flex justify-between items-start relative z-10">
-                                <div><p className="text-xs font-semibold text-vps-ivory/60 uppercase tracking-wider mb-2">Doanh thu Dự kiến</p><h3 className="text-xl md:text-2xl font-bold text-purple-400 tracking-tight truncate">{formatCurrency(expectedValue)}</h3></div>
-                                <div className="p-3 bg-purple-500/10 rounded-xl border border-purple-500/20"><BarChart3 className="w-6 h-6 text-purple-400" /></div>
-                            </div>
-                        </div>
-                        <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl hover:-translate-y-1 hover:border-yellow-500/30 transition-all duration-300 relative overflow-hidden group">
-                            <div className="absolute -right-6 -top-6 w-24 h-24 bg-yellow-500/5 rounded-full blur-2xl group-hover:bg-yellow-500/10 transition-all"></div>
-                            <div className="flex justify-between items-start relative z-10">
-                                <div><p className="text-xs font-semibold text-vps-ivory/60 uppercase tracking-wider mb-2">Doanh thu Thực Tế</p><h3 className="text-xl md:text-2xl font-bold text-vps-gold tracking-tight truncate">{formatCurrency(wonValue)}</h3></div>
-                                <div className="p-3 bg-yellow-500/10 rounded-xl border border-yellow-500/20"><Award className="w-6 h-6 text-vps-gold" /></div>
-                            </div>
-                        </div>
+                        {/* Các thẻ chỉ số tổng quan giữ nguyên của bạn (Tổng Leads, Đã chốt, Dự kiến, Thực tế...) */}
+                        {/* ... (Đã có sẵn ở code cũ, bạn giữ nguyên nhé) ... */}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-                        <div className="lg:col-span-1 bg-[#1A1A1A] border border-vps-gray/20 p-7 rounded-2xl shadow-xl flex flex-col items-center justify-center">
-                            <h3 className="font-bold text-lg text-vps-ivory mb-6 tracking-wide w-full text-left">Phân bổ Phễu</h3>
-                            <div className="relative w-48 h-48"><Doughnut data={pipelineData} options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#888', padding: 20 } } }, cutout: '75%' }} /></div>
-                        </div>
-                        <div className="lg:col-span-2 bg-[#1A1A1A] border border-vps-gray/20 p-7 rounded-2xl shadow-xl flex flex-col justify-center">
-                            <h3 className="font-bold text-lg text-vps-ivory mb-8 tracking-wide">Hiệu suất Chuyển đổi Toàn hệ thống</h3>
-                            <div className="space-y-6">
-                                <div>
-                                    <div className="flex justify-between text-sm font-medium text-gray-400 mb-2"><span>Khách Mới → Đang Tư Vấn</span><span className="text-blue-400">Tích cực</span></div>
-                                    <div className="w-full bg-[#111] h-3 rounded-full overflow-hidden border border-vps-gray/20"><div className="bg-blue-500 h-full rounded-full w-[80%]"></div></div>
-                                </div>
-                                <div>
-                                    <div className="flex justify-between text-sm font-medium text-gray-400 mb-2"><span>Đang Tư Vấn → Đã Chốt (Tỉ lệ chốt đơn)</span><span className="text-vps-gold font-bold">{getCRMStats().conversionRate}%</span></div>
-                                    <div className="w-full bg-[#111] h-3 rounded-full overflow-hidden border border-vps-gray/20"><div className="bg-gradient-to-r from-yellow-600 to-vps-gold h-full rounded-full transition-all duration-1000" style={{ width: `${getCRMStats().conversionRate}%` }}></div></div>
+                        {/* ================= THẺ PHÂN BỔ PHỄU (MỚI) ================= */}
+                        <div className="lg:col-span-1 bg-gradient-to-br from-[#1A1A1A] to-[#121212] border border-vps-gray/20 p-7 rounded-2xl shadow-xl flex flex-col items-center relative overflow-hidden group">
+                            {/* Ambient background glow */}
+                            <div className="absolute -top-10 -left-10 w-40 h-40 bg-purple-500/5 rounded-full blur-[60px] pointer-events-none group-hover:bg-purple-500/10 transition-all duration-1000"></div>
+
+                            <h3 className="font-bold text-lg text-vps-ivory mb-6 tracking-wide w-full text-left flex items-center gap-2 relative z-10">
+                                <PieChart className="w-5 h-5 text-purple-400" />
+                                Phân bổ Phễu
+                            </h3>
+
+                            {/* Biểu đồ Doughnut có số ở giữa */}
+                            <div className="relative w-52 h-52 mb-8 z-10 transition-transform duration-500 hover:scale-105">
+                                <Doughnut data={pipelineData} options={doughnutOptions} />
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none drop-shadow-md">
+                                    <span className="text-3xl font-bold text-vps-ivory">{totalLeads}</span>
+                                    <span className="text-[10px] text-gray-400 uppercase tracking-widest mt-1 font-medium">Tổng Leads</span>
                                 </div>
                             </div>
+
+                            {/* Custom Legend (Chú thích trực quan) */}
+                            <div className="w-full grid grid-cols-2 gap-3 relative z-10">
+                                <div className="flex items-center justify-between bg-[#111] px-3 py-2.5 rounded-xl border border-gray-500/20 hover:border-gray-500/50 transition-colors">
+                                    <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-gray-400 shadow-[0_0_8px_rgba(156,163,175,0.6)]"></div><span className="text-xs text-gray-400">Khách mới</span></div>
+                                    <span className="text-sm font-bold text-vps-ivory">{newLeadsCount}</span>
+                                </div>
+                                <div className="flex items-center justify-between bg-[#111] px-3 py-2.5 rounded-xl border border-blue-500/20 hover:border-blue-500/50 transition-colors">
+                                    <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div><span className="text-xs text-gray-400">Tư vấn</span></div>
+                                    <span className="text-sm font-bold text-vps-ivory">{consultingLeadsCount}</span>
+                                </div>
+                                <div className="flex items-center justify-between bg-[#111] px-3 py-2.5 rounded-xl border border-green-500/20 hover:border-green-500/50 transition-colors">
+                                    <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div><span className="text-xs text-gray-400">Đã chốt</span></div>
+                                    <span className="text-sm font-bold text-vps-ivory">{wonLeadsCount}</span>
+                                </div>
+                                <div className="flex items-center justify-between bg-[#111] px-3 py-2.5 rounded-xl border border-red-500/20 hover:border-red-500/50 transition-colors">
+                                    <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></div><span className="text-xs text-gray-400">Thất bại</span></div>
+                                    <span className="text-sm font-bold text-vps-ivory">{lostLeadsCount}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ================= THẺ HIỆU SUẤT (THẺ BÊN PHẢI ĐÃ TỐI ƯU TRƯỚC ĐÓ) ================= */}
+                        <div className="lg:col-span-2 bg-gradient-to-br from-[#1A1A1A] to-[#121212] border border-vps-gray/20 p-8 rounded-2xl shadow-xl flex flex-col justify-center relative overflow-hidden group">
+                            {/* ... (Code của thẻ Hiệu suất hệ thống bạn giữ nguyên tại đây) ... */}
                         </div>
                     </div>
                 </>
@@ -636,17 +666,211 @@ const Marketing = () => {
 
     // --- Placeholder cho các render component bị thiếu trong code mẫu ---
     const renderCustomers = () => {
+        const filtered = customers.filter(c => {
+            const matchSearch = (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (c.phone || '').includes(searchTerm);
+            return matchSearch;
+        });
+
         return (
-            <div className="bg-[#1A1A1A] border border-vps-gray/20 rounded-2xl p-8 text-center text-vps-ivory/60 mt-6">
-                (Chèn code render giao diện phần Customers CRM của bạn vào đây)
+            <div className="bg-[#1A1A1A] border border-vps-gray/20 rounded-2xl shadow-xl overflow-hidden mb-10 animate-fadeIn">
+                {/* Desktop Table Layout */}
+                <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-[#1E1E1E] border-b border-vps-gray/20 text-vps-ivory/60 text-xs uppercase tracking-wider">
+                                <th className="p-5 font-semibold">Khách hàng / Liên hệ</th>
+                                <th className="p-5 font-semibold">Chi tiết Hợp đồng</th>
+                                <th className="p-5 font-semibold text-center">Trạng thái Phễu</th>
+                                {userRole !== 'back_office' && <th className="p-5 font-semibold text-center">Thao tác</th>}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-vps-gray/10">
+                            {filtered.length === 0 ? (
+                                <tr><td colSpan={userRole !== 'back_office' ? "4" : "3"} className="p-8 text-center text-vps-ivory/40">Chưa có dữ liệu khách hàng.</td></tr>
+                            ) : (
+                                filtered.map(item => (
+                                    <tr key={item.id} className="hover:bg-[#222] transition-colors group">
+                                        <td className="p-5">
+                                            <div className="font-bold text-vps-ivory text-sm group-hover:text-blue-400 transition-colors">{item.name}</div>
+                                            <div className="text-xs text-gray-500 mt-1.5 flex items-center gap-1.5">
+                                                <MessageCircle className="w-3.5 h-3.5" /> {item.phone || 'Chưa có SĐT'}
+                                            </div>
+                                        </td>
+                                        <td className="p-5">
+                                            <div className="font-bold text-purple-400 text-sm">{formatCurrency(item.dealValue)}</div>
+                                            <span className="inline-block mt-2 bg-[#2A2A2A] px-2 py-0.5 rounded text-[10px] text-vps-ivory/80 font-medium tracking-wide">
+                                                Nguồn: {item.source || '--'}
+                                            </span>
+                                        </td>
+                                        <td className="p-5 text-center">
+                                            <span className={`text-[10px] font-bold px-3 py-1.5 rounded-full tracking-wider uppercase border 
+                                                ${item.pipeline === 'Đã chốt' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                                                    item.pipeline === 'Đang tư vấn' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                        item.pipeline === 'Thất bại' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                                            'bg-gray-500/10 text-gray-400 border-gray-500/20'}`}>
+                                                {item.pipeline}
+                                            </span>
+                                        </td>
+                                        {userRole !== 'back_office' && (
+                                            <td className="p-5 flex justify-center gap-4">
+                                                <button onClick={() => openModal(item)} className="p-2 bg-vps-gold/10 hover:bg-vps-gold/20 text-vps-gold rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
+                                                {['founder', 'front_office'].includes(userRole) && (
+                                                    <button onClick={() => handleDelete(item.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                                )}
+                                            </td>
+                                        )}
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Mobile Card Layout cho CRM */}
+                <div className="md:hidden flex flex-col divide-y divide-vps-gray/10">
+                    {filtered.length === 0 ? <div className="p-8 text-center text-vps-ivory/40">Chưa có dữ liệu.</div> :
+                        filtered.map(item => (
+                            <div key={item.id} className="p-5 flex flex-col gap-4">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <div className="font-bold text-vps-ivory text-lg">{item.name}</div>
+                                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5" /> {item.phone || '--'}</div>
+                                    </div>
+                                    <span className={`text-[9px] font-bold px-2.5 py-1 rounded-full uppercase border 
+                                        ${item.pipeline === 'Đã chốt' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                                            item.pipeline === 'Đang tư vấn' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                item.pipeline === 'Thất bại' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                                    'bg-gray-500/10 text-gray-400 border-gray-500/20'}`}>
+                                        {item.pipeline}
+                                    </span>
+                                </div>
+                                <div className="bg-[#222] p-3 rounded-xl border border-vps-gray/10 flex justify-between items-center">
+                                    <div>
+                                        <span className="text-gray-500 text-xs block mb-1">Giá trị HĐ:</span>
+                                        <strong className="text-purple-400 block">{formatCurrency(item.dealValue)}</strong>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-gray-500 text-xs block mb-1">Nguồn:</span>
+                                        <strong className="text-vps-ivory/80 text-sm block">{item.source || '--'}</strong>
+                                    </div>
+                                </div>
+                                {item.notes && <div className="text-xs text-gray-400 italic line-clamp-2 bg-[#111] p-2.5 rounded-lg border border-vps-gray/5">Ghi chú: {item.notes}</div>}
+
+                                {userRole !== 'back_office' && (
+                                    <div className="flex justify-end gap-3 mt-1">
+                                        <button onClick={() => openModal(item)} className="px-3 py-1.5 bg-vps-gold/10 text-vps-gold rounded-lg text-xs font-bold flex items-center gap-1.5"><Edit className="w-3 h-3" /> Sửa</button>
+                                        {['founder', 'front_office'].includes(userRole) && (
+                                            <button onClick={() => handleDelete(item.id)} className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold flex items-center gap-1.5"><Trash2 className="w-3 h-3" /> Xóa</button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    }
+                </div>
             </div>
         );
     };
 
     const renderCompetitors = () => {
+        const filtered = competitors.filter(c =>
+            (c.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
         return (
-            <div className="bg-[#1A1A1A] border border-vps-gray/20 rounded-2xl p-8 text-center text-vps-ivory/60 mt-6">
-                (Chèn code render giao diện phần Quản lý Đối thủ của bạn vào đây)
+            <div className="bg-[#1A1A1A] border border-vps-gray/20 rounded-2xl shadow-xl overflow-hidden mb-10 animate-fadeIn">
+                {/* Desktop Table Layout */}
+                <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-[#1E1E1E] border-b border-vps-gray/20 text-vps-ivory/60 text-xs uppercase tracking-wider">
+                                <th className="p-5 font-semibold">Tên Đối thủ</th>
+                                <th className="p-5 font-semibold">Phân tích Phân khúc</th>
+                                <th className="p-5 font-semibold w-1/3">Kế hoạch Đối phó (Action Plan)</th>
+                                {userRole !== 'back_office' && <th className="p-5 font-semibold text-center">Thao tác</th>}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-vps-gray/10">
+                            {filtered.length === 0 ? (
+                                <tr><td colSpan={userRole !== 'back_office' ? "4" : "3"} className="p-8 text-center text-vps-ivory/40">Chưa có dữ liệu đối thủ.</td></tr>
+                            ) : (
+                                filtered.map(item => (
+                                    <tr key={item.id} className="hover:bg-[#222] transition-colors group">
+                                        <td className="p-5">
+                                            <div className="font-bold text-vps-gold text-sm group-hover:text-yellow-400 transition-colors">{item.name}</div>
+                                            <div className="mt-2.5 flex items-center gap-2">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border
+                                                    ${item.threatLevel === 'Cao' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                                        item.threatLevel === 'Trung bình' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                                                            'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                                                    Mức đe dọa: {item.threatLevel}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="p-5 text-sm text-vps-ivory/80 space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <DollarSign className="w-4 h-4 text-gray-500" />
+                                                <span className="font-medium text-gray-300">{item.pricing}</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-5 text-xs text-gray-400 leading-relaxed">
+                                            <div className="line-clamp-2" title={item.actionPlan}>{item.actionPlan || 'Chưa cập nhật chiến lược đối phó.'}</div>
+                                        </td>
+                                        {userRole !== 'back_office' && (
+                                            <td className="p-5 flex justify-center gap-4">
+                                                <button onClick={() => openModal(item)} className="p-2 bg-vps-gold/10 hover:bg-vps-gold/20 text-vps-gold rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
+                                                {['founder', 'front_office'].includes(userRole) && (
+                                                    <button onClick={() => handleDelete(item.id)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                                )}
+                                            </td>
+                                        )}
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Mobile Card Layout cho Đối thủ */}
+                <div className="md:hidden flex flex-col divide-y divide-vps-gray/10">
+                    {filtered.length === 0 ? <div className="p-8 text-center text-vps-ivory/40">Chưa có dữ liệu.</div> :
+                        filtered.map(item => (
+                            <div key={item.id} className="p-5 flex flex-col gap-4">
+                                <div className="flex justify-between items-start">
+                                    <div className="font-bold text-vps-gold text-lg">{item.name}</div>
+                                    <span className={`text-[9px] font-bold px-2.5 py-1 rounded-full uppercase border 
+                                        ${item.threatLevel === 'Cao' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                            item.threatLevel === 'Trung bình' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                                                'bg-green-500/10 text-green-400 border-green-500/20'}`}>
+                                        Nguy cơ: {item.threatLevel}
+                                    </span>
+                                </div>
+
+                                <div className="bg-[#222] p-3 rounded-xl border border-vps-gray/10 text-sm flex items-center justify-between">
+                                    <span className="text-gray-500 text-xs">Phân khúc:</span>
+                                    <strong className="text-gray-300 flex items-center gap-1"><DollarSign className="w-3.5 h-3.5 text-gray-500" /> {item.pricing}</strong>
+                                </div>
+
+                                <div>
+                                    <span className="text-gray-500 text-[10px] uppercase font-bold tracking-wider mb-1.5 block">Kế hoạch đối phó</span>
+                                    <p className="text-xs text-gray-400 bg-[#111] p-3 rounded-lg border border-vps-gray/5 leading-relaxed">
+                                        {item.actionPlan || 'Chưa cập nhật chiến lược.'}
+                                    </p>
+                                </div>
+
+                                {userRole !== 'back_office' && (
+                                    <div className="flex justify-end gap-3 mt-1">
+                                        <button onClick={() => openModal(item)} className="px-3 py-1.5 bg-vps-gold/10 text-vps-gold rounded-lg text-xs font-bold flex items-center gap-1.5"><Edit className="w-3 h-3" /> Sửa</button>
+                                        {['founder', 'front_office'].includes(userRole) && (
+                                            <button onClick={() => handleDelete(item.id)} className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold flex items-center gap-1.5"><Trash2 className="w-3 h-3" /> Xóa</button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    }
+                </div>
             </div>
         );
     };

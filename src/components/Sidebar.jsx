@@ -27,7 +27,7 @@ const Sidebar = () => {
         { path: '/accounting', name: 'Hành chính & Kế toán', icon: Wallet, roles: ['founder', 'back_office'] },
         { path: '/hr', name: 'Nhân sự & Đào tạo', icon: Users, roles: ['founder', 'back_office'] },
         { path: '/marketing', name: 'Marketing & Sales', icon: Megaphone, roles: ['founder', 'front_office', 'staff', 'back_office'] },
-        { path: '/production', name: 'Sản xuất', icon: Clapperboard, roles: ['founder', 'front_office', 'staff', 'back_office'] },
+        { path: '/production', name: 'Sản xuất', icon: Clapperboard, roles: ['founder', 'front_office', 'staff', 'back_office', 'freelancer'] },
         { path: '/tasks', name: 'TaskBoard', icon: CheckSquare, roles: ['founder', 'back_office', 'front_office', 'staff', 'freelancer'] },
     ];
 
@@ -61,6 +61,22 @@ const Sidebar = () => {
                         const Icon = item.icon;
                         const hasAccess = item.roles.includes(userRole);
 
+                        // Hiển thị một thẻ DIV bị vô hiệu hóa, không thể click nếu người dùng không có quyền
+                        if (!hasAccess) {
+                            return (
+                                <div
+                                    key={item.path}
+                                    className="flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 opacity-50 cursor-not-allowed text-vps-ivory/60 border-l-4 border-transparent"
+                                >
+                                    <Icon className="w-5 h-5" />
+                                    <span className="flex-1 font-medium text-sm tracking-wide">{item.name}</span>
+                                    {/* Lưu ý: Đổi thành <LockIcon /> nếu lỗi vẫn còn sau khi đã cập nhật thư viện */}
+                                    <Lock className="w-4 h-4 text-gray-600" />
+                                </div>
+                            );
+                        }
+
+                        // Hiển thị NavLink thực sự nếu người dùng CÓ quyền truy cập
                         return (
                             <NavLink
                                 key={item.path}
@@ -70,13 +86,11 @@ const Sidebar = () => {
                                     `flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 group relative overflow-hidden ${isActive
                                         ? 'text-vps-gold bg-gradient-to-r from-vps-gold/15 to-transparent border-l-4 border-vps-gold shadow-[inset_0px_0px_20px_rgba(212,175,55,0.05)]'
                                         : 'text-vps-ivory/60 hover:text-vps-ivory hover:bg-[#1A1A1A] border-l-4 border-transparent'
-                                    } ${!hasAccess ? 'opacity-50' : ''}`
+                                    }`
                                 }
                             >
-                                <Icon className={`w-5 h-5 transition-transform duration-300 group-hover:scale-110 ${hasAccess ? 'group-hover:text-vps-gold' : ''}`} />
+                                <Icon className="w-5 h-5 transition-transform duration-300 group-hover:scale-110 group-hover:text-vps-gold" />
                                 <span className="flex-1 font-medium text-sm tracking-wide">{item.name}</span>
-
-                                {!hasAccess && <Lock className="w-4 h-4 text-gray-600" />}
                             </NavLink>
                         );
                     })}

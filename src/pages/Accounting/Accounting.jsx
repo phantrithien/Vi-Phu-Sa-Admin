@@ -1,15 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar';
+import { useAuth } from '../../contexts/AuthContext';
+
 import {
     Plus, Search, Filter, Edit, Trash2,
     Cloud, X, Save, FileText, Briefcase,
     Scale, FolderOpen, ExternalLink, AlertTriangle,
-    Wallet, ArrowUpRight, ArrowDownLeft, Users, CheckCircle, Clock
+    Wallet, ArrowUpRight, ArrowDownLeft, Users, CheckCircle, Clock, Lock
 } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy, doc, deleteDoc, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 
 const Accounting = () => {
+    const { userRole } = useAuth();
+
+    // 2. Tạo các biến kiểm tra quyền (có thể tùy chỉnh mảng role này)
+    const isFreelancer = ['freelancer', 'ctv'].includes(userRole);
+    const isManager = ['founder', 'front_office', 'back_office'].includes(userRole);
+
     const [activeTab, setActiveTab] = useState('admin'); // 'admin', 'accounting', 'payroll'
     const [loading, setLoading] = useState(true);
 
@@ -221,6 +229,7 @@ const Accounting = () => {
     const totalPendingSalary = payrollList.filter(p => p.status === 'Chờ thanh toán').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
     return (
+
         <div className="min-h-screen bg-[#0F0F0F] flex w-full max-w-[100vw] overflow-x-hidden relative text-vps-ivory">
             <Sidebar />
 
@@ -270,260 +279,291 @@ const Accounting = () => {
                 {/* 3. NỘI DUNG TỪNG TAB */}
                 {/* ===================== TAB HÀNH CHÍNH ===================== */}
                 {activeTab === 'admin' && (
-                    <div className="animate-fadeIn">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                            <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl flex items-center gap-4 hover:-translate-y-1 transition-transform">
-                                <div className="p-4 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20"><Briefcase className="w-8 h-8" /></div>
-                                <div><p className="text-sm text-gray-400 font-semibold mb-1">Hợp đồng đối tác</p><p className="text-3xl font-bold text-vps-ivory">{countContract}</p></div>
-                            </div>
-                            <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl flex items-center gap-4 hover:-translate-y-1 transition-transform">
-                                <div className="p-4 bg-vps-gold/10 text-vps-gold rounded-xl border border-vps-gold/20"><Scale className="w-8 h-8" /></div>
-                                <div><p className="text-sm text-gray-400 font-semibold mb-1">Hồ sơ Pháp lý</p><p className="text-3xl font-bold text-vps-ivory">{countLegal}</p></div>
-                            </div>
-                            <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl flex items-center gap-4 hover:-translate-y-1 transition-transform">
-                                <div className="p-4 bg-green-500/10 text-green-400 rounded-xl border border-green-500/20"><FileText className="w-8 h-8" /></div>
-                                <div><p className="text-sm text-gray-400 font-semibold mb-1">Biểu mẫu Nội bộ</p><p className="text-3xl font-bold text-vps-ivory">{countInternal}</p></div>
-                            </div>
+                    isFreelancer ? (
+                        <div className="bg-[#1A1A1A] border border-red-500/20 rounded-2xl p-16 text-center shadow-xl mt-8">
+                            <Lock className="w-16 h-16 text-red-500/50 mx-auto mb-4" />
+                            <h3 className="text-xl font-bold text-red-400 mb-2">Khu vực hạn chế</h3>
+                            <p className="text-gray-400 font-medium">Tài khoản Cộng tác viên / Freelancer không có quyền truy cập Giấy tờ & pháp lý.</p>
                         </div>
+                    ) : (
+                        <>
+                            <div className="animate-fadeIn">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                    <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl flex items-center gap-4 hover:-translate-y-1 transition-transform">
+                                        <div className="p-4 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20"><Briefcase className="w-8 h-8" /></div>
+                                        <div><p className="text-sm text-gray-400 font-semibold mb-1">Hợp đồng đối tác</p><p className="text-3xl font-bold text-vps-ivory">{countContract}</p></div>
+                                    </div>
+                                    <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl flex items-center gap-4 hover:-translate-y-1 transition-transform">
+                                        <div className="p-4 bg-vps-gold/10 text-vps-gold rounded-xl border border-vps-gold/20"><Scale className="w-8 h-8" /></div>
+                                        <div><p className="text-sm text-gray-400 font-semibold mb-1">Hồ sơ Pháp lý</p><p className="text-3xl font-bold text-vps-ivory">{countLegal}</p></div>
+                                    </div>
+                                    <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl flex items-center gap-4 hover:-translate-y-1 transition-transform">
+                                        <div className="p-4 bg-green-500/10 text-green-400 rounded-xl border border-green-500/20"><FileText className="w-8 h-8" /></div>
+                                        <div><p className="text-sm text-gray-400 font-semibold mb-1">Biểu mẫu Nội bộ</p><p className="text-3xl font-bold text-vps-ivory">{countInternal}</p></div>
+                                    </div>
+                                </div>
 
-                        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                                <input type="text" placeholder="Tìm kiếm tên tài liệu, đối tác..." value={adminSearchTerm} onChange={(e) => setAdminSearchTerm(e.target.value)} className="w-full bg-[#1A1A1A] border border-vps-gray/20 rounded-xl pl-12 pr-4 py-3.5 text-vps-ivory focus:outline-none focus:border-vps-gold text-sm shadow-inner transition-colors" />
-                            </div>
-                            <div className="relative min-w-[200px]">
-                                <select value={adminFilter} onChange={(e) => setAdminFilter(e.target.value)} className="w-full appearance-none h-full px-5 py-3.5 pr-10 bg-[#1A1A1A] border border-vps-gray/20 rounded-xl text-vps-ivory hover:border-vps-gold/50 focus:outline-none focus:border-vps-gold transition-colors cursor-pointer text-sm font-semibold">
-                                    <option value="All">Tất cả danh mục</option><option value="Hợp đồng">Hợp đồng kinh tế</option><option value="Pháp lý">Hồ sơ pháp lý</option><option value="Nội bộ">Biểu mẫu nội bộ</option>
-                                </select>
-                                <Filter className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                            </div>
-                        </div>
+                                <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                                    <div className="relative flex-1">
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                                        <input type="text" placeholder="Tìm kiếm tên tài liệu, đối tác..." value={adminSearchTerm} onChange={(e) => setAdminSearchTerm(e.target.value)} className="w-full bg-[#1A1A1A] border border-vps-gray/20 rounded-xl pl-12 pr-4 py-3.5 text-vps-ivory focus:outline-none focus:border-vps-gold text-sm shadow-inner transition-colors" />
+                                    </div>
+                                    <div className="relative min-w-[200px]">
+                                        <select value={adminFilter} onChange={(e) => setAdminFilter(e.target.value)} className="w-full appearance-none h-full px-5 py-3.5 pr-10 bg-[#1A1A1A] border border-vps-gray/20 rounded-xl text-vps-ivory hover:border-vps-gold/50 focus:outline-none focus:border-vps-gold transition-colors cursor-pointer text-sm font-semibold">
+                                            <option value="All">Tất cả danh mục</option><option value="Hợp đồng">Hợp đồng kinh tế</option><option value="Pháp lý">Hồ sơ pháp lý</option><option value="Nội bộ">Biểu mẫu nội bộ</option>
+                                        </select>
+                                        <Filter className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                                    </div>
+                                </div>
 
-                        <div className="bg-[#1A1A1A] border border-vps-gray/20 rounded-2xl shadow-xl overflow-hidden mb-10">
-                            <div className="hidden md:block overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="bg-[#1E1E1E] border-b border-vps-gray/20 text-vps-ivory/60 text-xs uppercase tracking-wider">
-                                            <th className="p-5 font-semibold">Tên Tài liệu / Hợp đồng</th><th className="p-5 font-semibold">Đối tác</th><th className="p-5 font-semibold">Thời hạn</th><th className="p-5 font-semibold text-center">Tệp đính kèm</th><th className="p-5 font-semibold text-center">Trạng thái</th><th className="p-5 font-semibold text-center">Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-vps-gray/10">
-                                        {filteredDocs.length === 0 ? <tr><td colSpan="6" className="p-12 text-center text-gray-500">Kho lưu trữ trống hoặc không tìm thấy.</td></tr> :
-                                            filteredDocs.map(docItem => {
-                                                const exp = checkExpiration(docItem.expirationDate);
-                                                return (
-                                                    <tr key={docItem.id} className="hover:bg-[#222] transition-colors group">
-                                                        <td className="p-5">
-                                                            <div className="font-bold text-vps-gold text-base mb-2 group-hover:text-yellow-400 transition-colors">{docItem.title}</div>
-                                                            <span className={`inline-block px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border ${docItem.category === 'Hợp đồng' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : docItem.category === 'Pháp lý' ? 'bg-vps-gold/10 border-vps-gold/20 text-vps-gold' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>{docItem.category}</span>
-                                                        </td>
-                                                        <td className="p-5 text-sm text-gray-300 font-medium">{docItem.partner || '-'}</td>
-                                                        <td className="p-5 text-xs text-gray-400 font-medium">
-                                                            <div>Ký: {docItem.dateSigned}</div>
-                                                            {docItem.expirationDate && <div className={`mt-1.5 flex items-center gap-1.5 ${exp.isExpired ? 'text-red-400' : exp.isWarning ? 'text-orange-400' : 'text-gray-500'}`}>{(exp.isExpired || exp.isWarning) && <AlertTriangle className="w-3.5 h-3.5" />} Hết hạn: {docItem.expirationDate}</div>}
-                                                        </td>
-                                                        <td className="p-5 text-center">
-                                                            {docItem.fileLink ? <a href={docItem.fileLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 hover:text-blue-300 bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/20 hover:bg-blue-500/20 transition-colors"><ExternalLink className="w-3.5 h-3.5" /> Mở File</a> : <span className="text-gray-600">-</span>}
-                                                        </td>
-                                                        <td className="p-5 text-center"><span className="text-[10px] font-bold uppercase tracking-wider text-vps-ivory/70 border border-vps-gray/30 px-3 py-1.5 rounded-full">{docItem.status}</span></td>
-                                                        <td className="p-5 flex justify-center gap-3 mt-1">
-                                                            <button onClick={() => openAdminModal(docItem)} className="p-2 bg-vps-gold/10 hover:bg-vps-gold/20 text-vps-gold rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
-                                                            <button onClick={() => handleAdminDelete(docItem.id, docItem.title)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            })
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                            {/* Mobile View */}
-                            <div className="md:hidden flex flex-col divide-y divide-vps-gray/10">
-                                {filteredDocs.map(docItem => {
-                                    const exp = checkExpiration(docItem.expirationDate);
-                                    return (
-                                        <div key={docItem.id} className="p-5 flex flex-col gap-4">
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex-1 pr-3"><h3 className="text-base font-bold text-vps-gold mb-1">{docItem.title}</h3><p className="text-xs text-gray-400 font-medium">{docItem.partner || 'Nội bộ'}</p></div>
-                                                <span className={`shrink-0 px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border ${docItem.category === 'Hợp đồng' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : docItem.category === 'Pháp lý' ? 'bg-vps-gold/10 border-vps-gold/20 text-vps-gold' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>{docItem.category}</span>
-                                            </div>
-                                            {docItem.expirationDate && <div className={`text-xs font-medium flex items-center gap-1.5 ${exp.isExpired ? 'text-red-400' : exp.isWarning ? 'text-orange-400' : 'text-gray-500'}`}>{(exp.isExpired || exp.isWarning) && <AlertTriangle className="w-3.5 h-3.5" />} Hết hạn: {docItem.expirationDate}</div>}
-                                            <div className="flex justify-between items-center border-t border-vps-gray/20 pt-4">
-                                                {docItem.fileLink ? <a href={docItem.fileLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-bold text-blue-400"><ExternalLink className="w-3.5 h-3.5" /> Mở File</a> : <span></span>}
-                                                <div className="flex items-center gap-3">
-                                                    <button onClick={() => openAdminModal(docItem)} className="px-3 py-1.5 bg-vps-gold/10 text-vps-gold rounded-lg text-xs font-bold flex items-center gap-1.5"><Edit className="w-3 h-3" /> Sửa</button>
-                                                    <button onClick={() => handleAdminDelete(docItem.id, docItem.title)} className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold flex items-center gap-1.5"><Trash2 className="w-3 h-3" /> Xóa</button>
+                                <div className="bg-[#1A1A1A] border border-vps-gray/20 rounded-2xl shadow-xl overflow-hidden mb-10">
+                                    <div className="hidden md:block overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-[#1E1E1E] border-b border-vps-gray/20 text-vps-ivory/60 text-xs uppercase tracking-wider">
+                                                    <th className="p-5 font-semibold">Tên Tài liệu / Hợp đồng</th><th className="p-5 font-semibold">Đối tác</th><th className="p-5 font-semibold">Thời hạn</th><th className="p-5 font-semibold text-center">Tệp đính kèm</th><th className="p-5 font-semibold text-center">Trạng thái</th><th className="p-5 font-semibold text-center">Thao tác</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-vps-gray/10">
+                                                {filteredDocs.length === 0 ? <tr><td colSpan="6" className="p-12 text-center text-gray-500">Kho lưu trữ trống hoặc không tìm thấy.</td></tr> :
+                                                    filteredDocs.map(docItem => {
+                                                        const exp = checkExpiration(docItem.expirationDate);
+                                                        return (
+                                                            <tr key={docItem.id} className="hover:bg-[#222] transition-colors group">
+                                                                <td className="p-5">
+                                                                    <div className="font-bold text-vps-gold text-base mb-2 group-hover:text-yellow-400 transition-colors">{docItem.title}</div>
+                                                                    <span className={`inline-block px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border ${docItem.category === 'Hợp đồng' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : docItem.category === 'Pháp lý' ? 'bg-vps-gold/10 border-vps-gold/20 text-vps-gold' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>{docItem.category}</span>
+                                                                </td>
+                                                                <td className="p-5 text-sm text-gray-300 font-medium">{docItem.partner || '-'}</td>
+                                                                <td className="p-5 text-xs text-gray-400 font-medium">
+                                                                    <div>Ký: {docItem.dateSigned}</div>
+                                                                    {docItem.expirationDate && <div className={`mt-1.5 flex items-center gap-1.5 ${exp.isExpired ? 'text-red-400' : exp.isWarning ? 'text-orange-400' : 'text-gray-500'}`}>{(exp.isExpired || exp.isWarning) && <AlertTriangle className="w-3.5 h-3.5" />} Hết hạn: {docItem.expirationDate}</div>}
+                                                                </td>
+                                                                <td className="p-5 text-center">
+                                                                    {docItem.fileLink ? <a href={docItem.fileLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-400 hover:text-blue-300 bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/20 hover:bg-blue-500/20 transition-colors"><ExternalLink className="w-3.5 h-3.5" /> Mở File</a> : <span className="text-gray-600">-</span>}
+                                                                </td>
+                                                                <td className="p-5 text-center"><span className="text-[10px] font-bold uppercase tracking-wider text-vps-ivory/70 border border-vps-gray/30 px-3 py-1.5 rounded-full">{docItem.status}</span></td>
+                                                                <td className="p-5 flex justify-center gap-3 mt-1">
+                                                                    <button onClick={() => openAdminModal(docItem)} className="p-2 bg-vps-gold/10 hover:bg-vps-gold/20 text-vps-gold rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
+                                                                    <button onClick={() => handleAdminDelete(docItem.id, docItem.title)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                                                </td>
+                                                            </tr>
+                                                        )
+                                                    })
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {/* Mobile View */}
+                                    <div className="md:hidden flex flex-col divide-y divide-vps-gray/10">
+                                        {filteredDocs.map(docItem => {
+                                            const exp = checkExpiration(docItem.expirationDate);
+                                            return (
+                                                <div key={docItem.id} className="p-5 flex flex-col gap-4">
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex-1 pr-3"><h3 className="text-base font-bold text-vps-gold mb-1">{docItem.title}</h3><p className="text-xs text-gray-400 font-medium">{docItem.partner || 'Nội bộ'}</p></div>
+                                                        <span className={`shrink-0 px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border ${docItem.category === 'Hợp đồng' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : docItem.category === 'Pháp lý' ? 'bg-vps-gold/10 border-vps-gold/20 text-vps-gold' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>{docItem.category}</span>
+                                                    </div>
+                                                    {docItem.expirationDate && <div className={`text-xs font-medium flex items-center gap-1.5 ${exp.isExpired ? 'text-red-400' : exp.isWarning ? 'text-orange-400' : 'text-gray-500'}`}>{(exp.isExpired || exp.isWarning) && <AlertTriangle className="w-3.5 h-3.5" />} Hết hạn: {docItem.expirationDate}</div>}
+                                                    <div className="flex justify-between items-center border-t border-vps-gray/20 pt-4">
+                                                        {docItem.fileLink ? <a href={docItem.fileLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-bold text-blue-400"><ExternalLink className="w-3.5 h-3.5" /> Mở File</a> : <span></span>}
+                                                        <div className="flex items-center gap-3">
+                                                            <button onClick={() => openAdminModal(docItem)} className="px-3 py-1.5 bg-vps-gold/10 text-vps-gold rounded-lg text-xs font-bold flex items-center gap-1.5"><Edit className="w-3 h-3" /> Sửa</button>
+                                                            <button onClick={() => handleAdminDelete(docItem.id, docItem.title)} className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold flex items-center gap-1.5"><Trash2 className="w-3 h-3" /> Xóa</button>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    )
-                                })}
+                                            )
+                                        })}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        </>
+                    )
                 )}
 
                 {/* ===================== TAB KẾ TOÁN NỘI BỘ ===================== */}
-                {activeTab === 'accounting' && (
-                    <div className="animate-fadeIn">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                            <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl flex items-center justify-between group hover:border-green-500/30 transition-colors">
-                                <div><p className="text-xs font-semibold text-vps-ivory/60 uppercase tracking-wider mb-2">Tổng Thu (Đã thanh toán)</p><h3 className="text-2xl md:text-3xl font-bold text-green-400 tracking-tight">{formatCurrency(totalIncome)}</h3></div>
-                                <div className="p-3 bg-green-500/10 rounded-xl border border-green-500/20"><ArrowUpRight className="w-6 h-6 text-green-400" /></div>
-                            </div>
-                            <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl flex items-center justify-between group hover:border-red-500/30 transition-colors">
-                                <div><p className="text-xs font-semibold text-vps-ivory/60 uppercase tracking-wider mb-2">Tổng Chi (Đã thanh toán)</p><h3 className="text-2xl md:text-3xl font-bold text-red-400 tracking-tight">{formatCurrency(totalExpense)}</h3></div>
-                                <div className="p-3 bg-red-500/10 rounded-xl border border-red-500/20"><ArrowDownLeft className="w-6 h-6 text-red-400" /></div>
-                            </div>
+                {activeTab === 'admin' || activeTab === 'accounting' && (
+                    isFreelancer ? (
+                        <div className="bg-[#1A1A1A] border border-red-500/20 rounded-2xl p-16 text-center shadow-xl mt-8">
+                            <Lock className="w-16 h-16 text-red-500/50 mx-auto mb-4" />
+                            <h3 className="text-xl font-bold text-red-400 mb-2">Khu vực hạn chế</h3>
+                            <p className="text-gray-400 font-medium">Tài khoản Cộng tác viên / Freelancer không có quyền truy cập Giấy tờ & pháp lý.</p>
                         </div>
-
-                        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                                <input type="text" placeholder="Tìm kiếm khách hàng, nội dung..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[#1A1A1A] border border-vps-gray/20 rounded-xl pl-12 pr-4 py-3.5 text-vps-ivory focus:outline-none focus:border-vps-gold text-sm shadow-inner transition-colors" />
-                            </div>
-                            <div className="relative min-w-[200px]">
-                                <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="w-full appearance-none h-full px-5 py-3.5 pr-10 bg-[#1A1A1A] border border-vps-gray/20 rounded-xl text-vps-ivory hover:border-vps-gold/50 focus:outline-none focus:border-vps-gold transition-colors cursor-pointer text-sm font-semibold">
-                                    <option value="All">Tất cả giao dịch</option><option value="Thu">Chỉ Thu</option><option value="Chi">Chỉ Chi</option>
-                                </select>
-                                <Filter className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                            </div>
-                        </div>
-
-                        <div className="bg-[#1A1A1A] border border-vps-gray/20 rounded-2xl shadow-xl overflow-hidden mb-10">
-                            <div className="hidden md:block overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="bg-[#1E1E1E] border-b border-vps-gray/20 text-vps-ivory/60 text-xs uppercase tracking-wider">
-                                            <th className="p-5 font-semibold">Ngày</th><th className="p-5 font-semibold">Khách hàng / Đối tác</th><th className="p-5 font-semibold text-right">Số tiền (VNĐ)</th><th className="p-5 font-semibold text-center">Loại</th><th className="p-5 font-semibold text-center">Trạng thái</th><th className="p-5 font-semibold text-center">Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-vps-gray/10">
-                                        {filteredTx.length === 0 ? <tr><td colSpan="6" className="p-12 text-center text-gray-500 font-medium">Không tìm thấy giao dịch nào.</td></tr> :
-                                            filteredTx.map(tx => (
-                                                <tr key={tx.id} className="hover:bg-[#222] transition-colors group">
-                                                    <td className="p-5 text-sm font-medium text-gray-400">{tx.date}</td>
-                                                    <td className="p-5">
-                                                        <div className="font-bold text-vps-ivory text-base group-hover:text-white transition-colors">{tx.client}</div>
-                                                        {tx.description && <div className="text-xs text-gray-500 font-medium mt-1.5">{tx.description}</div>}
-                                                    </td>
-                                                    <td className={`p-5 text-base font-bold text-right ${tx.type === 'Thu' ? 'text-green-400' : 'text-red-400'}`}>{tx.type === 'Thu' ? '+' : '-'}{formatCurrency(tx.amount)}</td>
-                                                    <td className="p-5 text-center"><span className={`inline-block px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${tx.type === 'Thu' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tx.type}</span></td>
-                                                    <td className="p-5 text-center"><span className="text-[10px] font-bold uppercase tracking-wider text-vps-ivory/70 border border-vps-gray/30 px-3 py-1.5 rounded-full">{tx.status}</span></td>
-                                                    <td className="p-5 flex justify-center gap-3 mt-1.5">
-                                                        {tx.isAutoSync ? <span className="text-[10px] text-green-400 font-bold bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-full uppercase tracking-wider">Auto Cloud</span> :
-                                                            <><button onClick={() => openModal(tx)} className="p-2 bg-vps-gold/10 hover:bg-vps-gold/20 text-vps-gold rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
-                                                                <button onClick={() => handleDelete(tx.id, tx.client)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button></>}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div className="md:hidden flex flex-col divide-y divide-vps-gray/10">
-                                {filteredTx.map(tx => (
-                                    <div key={tx.id} className="p-5 flex flex-col gap-4">
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex-1 pr-3"><h3 className="text-base font-bold text-vps-ivory mb-1">{tx.client}</h3>{tx.description && <p className="text-xs font-medium text-gray-500 line-clamp-1">{tx.description}</p>}</div>
-                                            <span className={`shrink-0 block text-lg font-bold ${tx.type === 'Thu' ? 'text-green-400' : 'text-red-400'}`}>{tx.type === 'Thu' ? '+' : '-'}{formatCurrency(tx.amount)}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center text-xs font-medium text-gray-400"><span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {tx.date}</span><span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border ${tx.type === 'Thu' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tx.type}</span></div>
-                                        <div className="flex justify-between items-center border-t border-vps-gray/20 pt-4 mt-1">
-                                            <span className="text-[9px] font-bold uppercase tracking-wider text-vps-ivory/70 border border-vps-gray/30 px-2.5 py-1 rounded-full">{tx.status}</span>
-                                            {tx.isAutoSync ? <span className="text-[9px] text-green-400 font-bold bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full uppercase">Auto Cloud</span> :
-                                                <div className="flex items-center gap-3">
-                                                    <button onClick={() => openModal(tx)} className="px-3 py-1.5 bg-vps-gold/10 text-vps-gold rounded-lg text-xs font-bold flex items-center gap-1.5"><Edit className="w-3 h-3" /> Sửa</button>
-                                                    <button onClick={() => handleDelete(tx.id, tx.client)} className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold flex items-center gap-1.5"><Trash2 className="w-3 h-3" /> Xóa</button>
-                                                </div>}
-                                        </div>
+                    ) : (
+                        <>
+                            <div className="animate-fadeIn">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                    <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl flex items-center justify-between group hover:border-green-500/30 transition-colors">
+                                        <div><p className="text-xs font-semibold text-vps-ivory/60 uppercase tracking-wider mb-2">Tổng Thu (Đã thanh toán)</p><h3 className="text-2xl md:text-3xl font-bold text-green-400 tracking-tight">{formatCurrency(totalIncome)}</h3></div>
+                                        <div className="p-3 bg-green-500/10 rounded-xl border border-green-500/20"><ArrowUpRight className="w-6 h-6 text-green-400" /></div>
                                     </div>
-                                ))}
+                                    <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl flex items-center justify-between group hover:border-red-500/30 transition-colors">
+                                        <div><p className="text-xs font-semibold text-vps-ivory/60 uppercase tracking-wider mb-2">Tổng Chi (Đã thanh toán)</p><h3 className="text-2xl md:text-3xl font-bold text-red-400 tracking-tight">{formatCurrency(totalExpense)}</h3></div>
+                                        <div className="p-3 bg-red-500/10 rounded-xl border border-red-500/20"><ArrowDownLeft className="w-6 h-6 text-red-400" /></div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                                    <div className="relative flex-1">
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                                        <input type="text" placeholder="Tìm kiếm khách hàng, nội dung..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[#1A1A1A] border border-vps-gray/20 rounded-xl pl-12 pr-4 py-3.5 text-vps-ivory focus:outline-none focus:border-vps-gold text-sm shadow-inner transition-colors" />
+                                    </div>
+                                    <div className="relative min-w-[200px]">
+                                        <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="w-full appearance-none h-full px-5 py-3.5 pr-10 bg-[#1A1A1A] border border-vps-gray/20 rounded-xl text-vps-ivory hover:border-vps-gold/50 focus:outline-none focus:border-vps-gold transition-colors cursor-pointer text-sm font-semibold">
+                                            <option value="All">Tất cả giao dịch</option><option value="Thu">Chỉ Thu</option><option value="Chi">Chỉ Chi</option>
+                                        </select>
+                                        <Filter className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-[#1A1A1A] border border-vps-gray/20 rounded-2xl shadow-xl overflow-hidden mb-10">
+                                    <div className="hidden md:block overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-[#1E1E1E] border-b border-vps-gray/20 text-vps-ivory/60 text-xs uppercase tracking-wider">
+                                                    <th className="p-5 font-semibold">Ngày</th><th className="p-5 font-semibold">Khách hàng / Đối tác</th><th className="p-5 font-semibold text-right">Số tiền (VNĐ)</th><th className="p-5 font-semibold text-center">Loại</th><th className="p-5 font-semibold text-center">Trạng thái</th><th className="p-5 font-semibold text-center">Thao tác</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-vps-gray/10">
+                                                {filteredTx.length === 0 ? <tr><td colSpan="6" className="p-12 text-center text-gray-500 font-medium">Không tìm thấy giao dịch nào.</td></tr> :
+                                                    filteredTx.map(tx => (
+                                                        <tr key={tx.id} className="hover:bg-[#222] transition-colors group">
+                                                            <td className="p-5 text-sm font-medium text-gray-400">{tx.date}</td>
+                                                            <td className="p-5">
+                                                                <div className="font-bold text-vps-ivory text-base group-hover:text-white transition-colors">{tx.client}</div>
+                                                                {tx.description && <div className="text-xs text-gray-500 font-medium mt-1.5">{tx.description}</div>}
+                                                            </td>
+                                                            <td className={`p-5 text-base font-bold text-right ${tx.type === 'Thu' ? 'text-green-400' : 'text-red-400'}`}>{tx.type === 'Thu' ? '+' : '-'}{formatCurrency(tx.amount)}</td>
+                                                            <td className="p-5 text-center"><span className={`inline-block px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${tx.type === 'Thu' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tx.type}</span></td>
+                                                            <td className="p-5 text-center"><span className="text-[10px] font-bold uppercase tracking-wider text-vps-ivory/70 border border-vps-gray/30 px-3 py-1.5 rounded-full">{tx.status}</span></td>
+                                                            <td className="p-5 flex justify-center gap-3 mt-1.5">
+                                                                {tx.isAutoSync ? <span className="text-[10px] text-green-400 font-bold bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-full uppercase tracking-wider">Auto Cloud</span> :
+                                                                    <><button onClick={() => openModal(tx)} className="p-2 bg-vps-gold/10 hover:bg-vps-gold/20 text-vps-gold rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
+                                                                        <button onClick={() => handleDelete(tx.id, tx.client)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button></>}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="md:hidden flex flex-col divide-y divide-vps-gray/10">
+                                        {filteredTx.map(tx => (
+                                            <div key={tx.id} className="p-5 flex flex-col gap-4">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1 pr-3"><h3 className="text-base font-bold text-vps-ivory mb-1">{tx.client}</h3>{tx.description && <p className="text-xs font-medium text-gray-500 line-clamp-1">{tx.description}</p>}</div>
+                                                    <span className={`shrink-0 block text-lg font-bold ${tx.type === 'Thu' ? 'text-green-400' : 'text-red-400'}`}>{tx.type === 'Thu' ? '+' : '-'}{formatCurrency(tx.amount)}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-xs font-medium text-gray-400"><span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {tx.date}</span><span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider border ${tx.type === 'Thu' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tx.type}</span></div>
+                                                <div className="flex justify-between items-center border-t border-vps-gray/20 pt-4 mt-1">
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-vps-ivory/70 border border-vps-gray/30 px-2.5 py-1 rounded-full">{tx.status}</span>
+                                                    {tx.isAutoSync ? <span className="text-[9px] text-green-400 font-bold bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full uppercase">Auto Cloud</span> :
+                                                        <div className="flex items-center gap-3">
+                                                            <button onClick={() => openModal(tx)} className="px-3 py-1.5 bg-vps-gold/10 text-vps-gold rounded-lg text-xs font-bold flex items-center gap-1.5"><Edit className="w-3 h-3" /> Sửa</button>
+                                                            <button onClick={() => handleDelete(tx.id, tx.client)} className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold flex items-center gap-1.5"><Trash2 className="w-3 h-3" /> Xóa</button>
+                                                        </div>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        </>
+                    )
                 )}
 
                 {/* ===================== TAB LƯƠNG & THƯỞNG (PAYROLL) ===================== */}
-                {activeTab === 'payroll' && (
-                    <div className="animate-fadeIn">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                            <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl flex items-center justify-between group hover:border-green-500/30 transition-colors">
-                                <div><p className="text-xs font-semibold text-vps-ivory/60 uppercase tracking-wider mb-2">Đã Chi Trả</p><h3 className="text-2xl md:text-3xl font-bold text-green-400 tracking-tight">{formatCurrency(totalPaidSalary)}</h3></div>
-                                <div className="p-3 bg-green-500/10 rounded-xl border border-green-500/20"><CheckCircle className="w-6 h-6 text-green-400" /></div>
-                            </div>
-                            <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl flex items-center justify-between group hover:border-orange-500/30 transition-colors">
-                                <div><p className="text-xs font-semibold text-vps-ivory/60 uppercase tracking-wider mb-2">Chờ Chi Trả (Công nợ)</p><h3 className="text-2xl md:text-3xl font-bold text-orange-400 tracking-tight">{formatCurrency(totalPendingSalary)}</h3></div>
-                                <div className="p-3 bg-orange-500/10 rounded-xl border border-orange-500/20"><Clock className="w-6 h-6 text-orange-400" /></div>
-                            </div>
-                        </div>
 
-                        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                                <input type="text" placeholder="Tìm tên nhân viên, chức vụ, tháng..." value={payrollSearch} onChange={(e) => setPayrollSearch(e.target.value)} className="w-full bg-[#1A1A1A] border border-vps-gray/20 rounded-xl pl-12 pr-4 py-3.5 text-vps-ivory focus:outline-none focus:border-vps-gold text-sm shadow-inner transition-colors" />
-                            </div>
-                            <div className="relative min-w-[200px]">
-                                <select value={payrollFilter} onChange={(e) => setPayrollFilter(e.target.value)} className="w-full appearance-none h-full px-5 py-3.5 pr-10 bg-[#1A1A1A] border border-vps-gray/20 rounded-xl text-vps-ivory hover:border-vps-gold/50 focus:outline-none focus:border-vps-gold transition-colors cursor-pointer text-sm font-semibold">
-                                    <option value="All">Tất cả trạng thái</option><option value="Đã thanh toán">Đã thanh toán</option><option value="Chờ thanh toán">Chờ thanh toán</option>
-                                </select>
-                                <Filter className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                            </div>
+                {activeTab === 'admin' || activeTab === 'payroll' && (
+                    isFreelancer ? (
+                        <div className="bg-[#1A1A1A] border border-red-500/20 rounded-2xl p-16 text-center shadow-xl mt-8">
+                            <Lock className="w-16 h-16 text-red-500/50 mx-auto mb-4" />
+                            <h3 className="text-xl font-bold text-red-400 mb-2">Khu vực hạn chế</h3>
+                            <p className="text-gray-400 font-medium">Tài khoản Cộng tác viên / Freelancer không có quyền truy cập Giấy tờ & pháp lý.</p>
                         </div>
-
-                        <div className="bg-[#1A1A1A] border border-vps-gray/20 rounded-2xl shadow-xl overflow-hidden mb-10">
-                            <div className="hidden md:block overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="bg-[#1E1E1E] border-b border-vps-gray/20 text-vps-ivory/60 text-xs uppercase tracking-wider">
-                                            <th className="p-5 font-semibold">Ngày / Tháng</th><th className="p-5 font-semibold">Nhân viên & Vị trí</th><th className="p-5 font-semibold text-right">Lương thực nhận</th><th className="p-5 font-semibold text-center">Trạng thái</th><th className="p-5 font-semibold text-center">Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-vps-gray/10">
-                                        {filteredPayroll.length === 0 ? <tr><td colSpan="5" className="p-12 text-center text-gray-500 font-medium">Không tìm thấy bản ghi lương nào.</td></tr> :
-                                            filteredPayroll.map(pr => (
-                                                <tr key={pr.id} className="hover:bg-[#222] transition-colors group">
-                                                    <td className="p-5 text-sm font-medium text-gray-400">
-                                                        <div className="flex items-center gap-2"><Clock className="w-3.5 h-3.5" />{pr.date}</div>
-                                                        {pr.description && <span className="block text-xs font-normal text-gray-500 mt-1.5">{pr.description}</span>}
-                                                    </td>
-                                                    <td className="p-5">
-                                                        <div className="font-bold text-vps-gold text-base group-hover:text-yellow-400 transition-colors">{pr.receiver}</div>
-                                                        <div className="text-xs text-gray-500 font-medium mt-1">{pr.role}</div>
-                                                    </td>
-                                                    <td className="p-5 text-base font-bold text-right text-purple-400">{formatCurrency(pr.amount)}</td>
-                                                    <td className="p-5 text-center"><span className={`text-[10px] font-bold uppercase tracking-wider border px-3 py-1.5 rounded-full ${pr.status === 'Đã thanh toán' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>{pr.status}</span></td>
-                                                    <td className="p-5 flex justify-center gap-3 mt-1.5">
-                                                        <button onClick={() => openPayrollModal(pr)} className="p-2 bg-vps-gold/10 hover:bg-vps-gold/20 text-vps-gold rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
-                                                        <button onClick={() => handlePayrollDelete(pr.id, pr.receiver)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div className="md:hidden flex flex-col divide-y divide-vps-gray/10">
-                                {filteredPayroll.map(pr => (
-                                    <div key={pr.id} className="p-5 flex flex-col gap-4">
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex-1 pr-3"><h3 className="text-base font-bold text-vps-gold mb-1">{pr.receiver}</h3><p className="text-xs font-medium text-gray-400">{pr.role}</p></div>
-                                            <span className="block text-lg font-bold text-purple-400 shrink-0">{formatCurrency(pr.amount)}</span>
-                                        </div>
-                                        <div className="bg-[#222] p-3 rounded-lg border border-vps-gray/10">
-                                            <div className="flex items-center gap-2 text-xs font-medium text-gray-400 mb-1.5"><Clock className="w-3.5 h-3.5" /> {pr.date}</div>
-                                            <div className="text-xs text-gray-500">{pr.description}</div>
-                                        </div>
-                                        <div className="flex justify-between items-center pt-2">
-                                            <span className={`text-[9px] font-bold uppercase tracking-wider border px-2.5 py-1 rounded-full ${pr.status === 'Đã thanh toán' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>{pr.status}</span>
-                                            <div className="flex items-center gap-3">
-                                                <button onClick={() => openPayrollModal(pr)} className="px-3 py-1.5 bg-vps-gold/10 text-vps-gold rounded-lg text-xs font-bold flex items-center gap-1.5"><Edit className="w-3 h-3" /> Sửa</button>
-                                                <button onClick={() => handlePayrollDelete(pr.id, pr.receiver)} className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold flex items-center gap-1.5"><Trash2 className="w-3 h-3" /> Xóa</button>
-                                            </div>
-                                        </div>
+                    ) : (
+                        <>
+                            <div className="animate-fadeIn">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                    <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl flex items-center justify-between group hover:border-green-500/30 transition-colors">
+                                        <div><p className="text-xs font-semibold text-vps-ivory/60 uppercase tracking-wider mb-2">Đã Chi Trả</p><h3 className="text-2xl md:text-3xl font-bold text-green-400 tracking-tight">{formatCurrency(totalPaidSalary)}</h3></div>
+                                        <div className="p-3 bg-green-500/10 rounded-xl border border-green-500/20"><CheckCircle className="w-6 h-6 text-green-400" /></div>
                                     </div>
-                                ))}
+                                    <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl flex items-center justify-between group hover:border-orange-500/30 transition-colors">
+                                        <div><p className="text-xs font-semibold text-vps-ivory/60 uppercase tracking-wider mb-2">Chờ Chi Trả (Công nợ)</p><h3 className="text-2xl md:text-3xl font-bold text-orange-400 tracking-tight">{formatCurrency(totalPendingSalary)}</h3></div>
+                                        <div className="p-3 bg-orange-500/10 rounded-xl border border-orange-500/20"><Clock className="w-6 h-6 text-orange-400" /></div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                                    <div className="relative flex-1">
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                                        <input type="text" placeholder="Tìm tên nhân viên, chức vụ, tháng..." value={payrollSearch} onChange={(e) => setPayrollSearch(e.target.value)} className="w-full bg-[#1A1A1A] border border-vps-gray/20 rounded-xl pl-12 pr-4 py-3.5 text-vps-ivory focus:outline-none focus:border-vps-gold text-sm shadow-inner transition-colors" />
+                                    </div>
+                                    <div className="relative min-w-[200px]">
+                                        <select value={payrollFilter} onChange={(e) => setPayrollFilter(e.target.value)} className="w-full appearance-none h-full px-5 py-3.5 pr-10 bg-[#1A1A1A] border border-vps-gray/20 rounded-xl text-vps-ivory hover:border-vps-gold/50 focus:outline-none focus:border-vps-gold transition-colors cursor-pointer text-sm font-semibold">
+                                            <option value="All">Tất cả trạng thái</option><option value="Đã thanh toán">Đã thanh toán</option><option value="Chờ thanh toán">Chờ thanh toán</option>
+                                        </select>
+                                        <Filter className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-[#1A1A1A] border border-vps-gray/20 rounded-2xl shadow-xl overflow-hidden mb-10">
+                                    <div className="hidden md:block overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-[#1E1E1E] border-b border-vps-gray/20 text-vps-ivory/60 text-xs uppercase tracking-wider">
+                                                    <th className="p-5 font-semibold">Ngày / Tháng</th><th className="p-5 font-semibold">Nhân viên & Vị trí</th><th className="p-5 font-semibold text-right">Lương thực nhận</th><th className="p-5 font-semibold text-center">Trạng thái</th><th className="p-5 font-semibold text-center">Thao tác</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-vps-gray/10">
+                                                {filteredPayroll.length === 0 ? <tr><td colSpan="5" className="p-12 text-center text-gray-500 font-medium">Không tìm thấy bản ghi lương nào.</td></tr> :
+                                                    filteredPayroll.map(pr => (
+                                                        <tr key={pr.id} className="hover:bg-[#222] transition-colors group">
+                                                            <td className="p-5 text-sm font-medium text-gray-400">
+                                                                <div className="flex items-center gap-2"><Clock className="w-3.5 h-3.5" />{pr.date}</div>
+                                                                {pr.description && <span className="block text-xs font-normal text-gray-500 mt-1.5">{pr.description}</span>}
+                                                            </td>
+                                                            <td className="p-5">
+                                                                <div className="font-bold text-vps-gold text-base group-hover:text-yellow-400 transition-colors">{pr.receiver}</div>
+                                                                <div className="text-xs text-gray-500 font-medium mt-1">{pr.role}</div>
+                                                            </td>
+                                                            <td className="p-5 text-base font-bold text-right text-purple-400">{formatCurrency(pr.amount)}</td>
+                                                            <td className="p-5 text-center"><span className={`text-[10px] font-bold uppercase tracking-wider border px-3 py-1.5 rounded-full ${pr.status === 'Đã thanh toán' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>{pr.status}</span></td>
+                                                            <td className="p-5 flex justify-center gap-3 mt-1.5">
+                                                                <button onClick={() => openPayrollModal(pr)} className="p-2 bg-vps-gold/10 hover:bg-vps-gold/20 text-vps-gold rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
+                                                                <button onClick={() => handlePayrollDelete(pr.id, pr.receiver)} className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="md:hidden flex flex-col divide-y divide-vps-gray/10">
+                                        {filteredPayroll.map(pr => (
+                                            <div key={pr.id} className="p-5 flex flex-col gap-4">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1 pr-3"><h3 className="text-base font-bold text-vps-gold mb-1">{pr.receiver}</h3><p className="text-xs font-medium text-gray-400">{pr.role}</p></div>
+                                                    <span className="block text-lg font-bold text-purple-400 shrink-0">{formatCurrency(pr.amount)}</span>
+                                                </div>
+                                                <div className="bg-[#222] p-3 rounded-lg border border-vps-gray/10">
+                                                    <div className="flex items-center gap-2 text-xs font-medium text-gray-400 mb-1.5"><Clock className="w-3.5 h-3.5" /> {pr.date}</div>
+                                                    <div className="text-xs text-gray-500">{pr.description}</div>
+                                                </div>
+                                                <div className="flex justify-between items-center pt-2">
+                                                    <span className={`text-[9px] font-bold uppercase tracking-wider border px-2.5 py-1 rounded-full ${pr.status === 'Đã thanh toán' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>{pr.status}</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <button onClick={() => openPayrollModal(pr)} className="px-3 py-1.5 bg-vps-gold/10 text-vps-gold rounded-lg text-xs font-bold flex items-center gap-1.5"><Edit className="w-3 h-3" /> Sửa</button>
+                                                        <button onClick={() => handlePayrollDelete(pr.id, pr.receiver)} className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold flex items-center gap-1.5"><Trash2 className="w-3 h-3" /> Xóa</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        </>
+                    )
                 )}
 
                 {/* ========================================== */}
@@ -604,8 +644,9 @@ const Accounting = () => {
                 )}
 
             </div>
-        </div>
+        </div >
     );
+
 };
 
 export default Accounting;
