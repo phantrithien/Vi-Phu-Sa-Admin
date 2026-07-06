@@ -1,0 +1,16 @@
+{
+    "short_name": "ViPhuSaAdmin",
+    "name": "Vị Phù Sa - Hệ thống Quản trị",
+    "icons": [
+        {
+            "src": "favicon.ico",
+            "sizes": "64x64 32x32 24x24 16x16",
+            "type": "image/x-icon"
+        }
+    ],
+    "start_url": "/",
+    "background_color": "#121212",
+    "theme_color": "#D4AF37",
+    "display": "standalone",
+    "orientation": "portrait"
+}

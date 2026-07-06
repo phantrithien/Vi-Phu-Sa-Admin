@@ -343,7 +343,7 @@ const HR = () => {
                                             className="w-full bg-[#111] border border-vps-gray/20 rounded-xl p-3.5 text-vps-ivory focus:border-vps-gold outline-none appearance-none font-bold transition-colors">
                                             <option value="Nhân viên">Nhân viên</option>
                                             <option value="Trưởng phòng / Quản lý" className="text-vps-gold">Quản lý</option>
-                                            <option value="Ban Giám Đốc" className="text-red-400">Ban Giám Đốc</option>
+                                            <option value="Ban Giám Đốc" className="text-red-400">Điều hành</option>
                                             <option value="Freelancer / CTV">Freelancer / CTV</option>
                                         </select>
                                     </div>
