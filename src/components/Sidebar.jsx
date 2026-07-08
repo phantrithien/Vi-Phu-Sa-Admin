@@ -23,7 +23,7 @@ const Sidebar = () => {
     };
 
     const menuItems = [
-        { path: '/', name: 'Tổng quan', icon: LayoutDashboard, roles: ['founder', 'back_office', 'front_office'] },
+        { path: '/', name: 'Tổng quan', icon: LayoutDashboard, roles: ['executive', 'founder', 'back_office', 'front_office'] },
         { path: '/accounting', name: 'Hành chính & Kế toán', icon: Wallet, roles: ['founder', 'back_office'] },
         { path: '/hr', name: 'Nhân sự & Đào tạo', icon: Users, roles: ['founder', 'back_office'] },
         { path: '/marketing', name: 'Marketing & Sales', icon: Megaphone, roles: ['founder', 'front_office', 'staff', 'back_office'] },
@@ -59,7 +59,8 @@ const Sidebar = () => {
                 <nav className="flex-1 px-4 py-8 space-y-2.5 overflow-y-auto custom-scrollbar">
                     {menuItems.map((item) => {
                         const Icon = item.icon;
-                        const hasAccess = item.roles.includes(userRole);
+                        const superRoles = ['founder', 'executive', 'admin'];
+                        const hasAccess = superRoles.includes(userRole) || item.roles.includes(userRole);
 
                         // Hiển thị một thẻ DIV bị vô hiệu hóa, không thể click nếu người dùng không có quyền
                         if (!hasAccess) {

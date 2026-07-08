@@ -33,8 +33,8 @@ const LABEL_COLORS = [
 ];
 
 const TaskBoard = () => {
-    const { currentUser, userRole } = useAuth();
-    // ... (Giữ nguyên toàn bộ logic state và useEffect của bạn)
+    const { currentUser, userRole, requestNotificationPermission: authRequestNoti } = useAuth();
+    
     const [employees, setEmployees] = useState([]);
     const [boardData, setBoardData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -62,13 +62,6 @@ const TaskBoard = () => {
     const sessionStartTimestamp = useRef(Date.now());
 
     const isManager = ['founder', 'back_office'].includes(userRole);
-
-    // --- EFFECTS & LOGIC (GIỮ NGUYÊN) ---
-    useEffect(() => {
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(err => console.error('Lỗi Service Worker:', err));
-        }
-    }, []);
 
     useEffect(() => {
         const boardRef = doc(db, 'boards', 'main-board');
@@ -117,11 +110,17 @@ const TaskBoard = () => {
         return () => unsubNoti();
     }, [currentUser]);
 
-    const requestNotificationPermission = async () => {
+    const handleEnableNotifications = async () => {
         if (!('Notification' in window)) return alert('Trình duyệt này không hỗ trợ nhận thông báo.');
-        const permission = await Notification.requestPermission();
-        setNotiPermission(permission);
-        if (permission === 'granted') alert('Tuyệt vời! Thiết bị của bạn đã sẵn sàng nhận thông báo công việc.');
+        
+        const isSuccess = await authRequestNoti(currentUser.uid);
+        
+        if (isSuccess) {
+            setNotiPermission('granted');
+            alert('Tuyệt vời! Thiết bị của bạn đã sẵn sàng nhận thông báo công việc.');
+        } else {
+            alert('Bạn cần cấp quyền trên trình duyệt để nhận thông báo.');
+        }
     };
 
     const triggerNativeNotification = (title, body) => {
@@ -136,7 +135,6 @@ const TaskBoard = () => {
         if (commentsEndRef.current) commentsEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }, [taskForm.comments]);
 
-    // --- KÉO THẢ LOGIC (GIỮ NGUYÊN) ---
     const handleDragStart = (e, taskId, sourceColId) => { e.dataTransfer.setData('taskId', taskId); e.dataTransfer.setData('sourceColId', sourceColId); setTimeout(() => e.target.classList.add('opacity-50'), 0); };
     const handleDragEnd = (e) => { e.target.classList.remove('opacity-50'); setDragOverColId(null); };
     const handleDragOver = (e, colId) => { e.preventDefault(); if (dragOverColId !== colId) setDragOverColId(colId); };
@@ -156,11 +154,12 @@ const TaskBoard = () => {
         await updateDoc(doc(db, 'boards', 'main-board'), newBoard);
     };
 
-    // --- CRUD TASK LOGIC (GIỮ NGUYÊN) ---
     const openNewTaskModal = (colId = 'col-0') => { if (!isManager) return; resetForm(); setTargetColForNewTask(colId); setIsTaskModalOpen(true); };
+
     const handleSaveTask = async (e) => {
         e.preventDefault(); if (!boardData || !isManager) return;
         const newBoard = { ...boardData };
+
         if (editingTaskId) {
             const oldTask = boardData.tasks[editingTaskId];
             if (oldTask.assignee !== taskForm.assignee && taskForm.assignee) {
@@ -173,18 +172,35 @@ const TaskBoard = () => {
             const systemLog = { id: Date.now(), text: `đã tạo thẻ này trong cột "${newBoard.columns[targetColForNewTask].title}"`, author: currentEmpName, timestamp: new Date().toISOString(), isSystem: true };
             newBoard.tasks[newTaskId] = { id: newTaskId, ...taskForm, comments: [systemLog] };
             newBoard.columns[targetColForNewTask].taskIds.unshift(newTaskId);
+
             if (taskForm.assignee) {
                 const assignedEmp = employees.find(emp => emp.name === taskForm.assignee);
                 if (assignedEmp) await addDoc(collection(db, 'notifications'), { toUid: assignedEmp.id, title: '🎯 Bạn có công việc mới!', body: `Nội dung: ${taskForm.content}`, createdAt: Date.now() });
             }
+
+            try {
+                await addDoc(collection(db, 'tasks'), {
+                    title: taskForm.content,
+                    department: "general",
+                    assignee: taskForm.assignee || "",
+                    createdAt: new Date()
+                });
+            } catch (err) {
+                console.error("Lỗi kích hoạt Firebase Functions:", err);
+            }
         }
-        await updateDoc(doc(db, 'boards', 'main-board'), newBoard); setIsTaskModalOpen(false); resetForm();
+
+        await updateDoc(doc(db, 'boards', 'main-board'), newBoard);
+        setIsTaskModalOpen(false);
+        resetForm();
     };
+
     const handleCardClick = (taskId) => {
         const task = boardData.tasks[taskId];
         setTaskForm({ content: task.content || '', description: task.description || '', assignee: task.assignee || '', deadline: task.deadline || '', priority: task.priority || 'Medium', labels: task.labels || [], checklists: task.checklists || [], comments: task.comments || [], coverUrl: task.coverUrl || '' });
         setEditingTaskId(taskId); setIsTaskModalOpen(true);
     };
+
     const handleDeleteTask = async (e, taskId, colId) => {
         e.stopPropagation(); if (!isManager || !window.confirm("Bạn có chắc chắn muốn xóa công việc này?")) return;
         const newBoard = { ...boardData };
@@ -192,10 +208,15 @@ const TaskBoard = () => {
         delete newBoard.tasks[taskId];
         await updateDoc(doc(db, 'boards', 'main-board'), newBoard);
     };
+
     const resetForm = () => { setTaskForm({ content: '', description: '', assignee: '', deadline: '', priority: 'Medium', labels: [], checklists: [], comments: [], coverUrl: '' }); setEditingTaskId(null); setNewChecklistItem(''); setNewComment(''); setTargetColForNewTask('col-0'); };
+
     const toggleLabel = (colorId) => { if (!isManager) return; setTaskForm(prev => { const hasLabel = prev.labels.includes(colorId); return { ...prev, labels: hasLabel ? prev.labels.filter(c => c !== colorId) : [...prev.labels, colorId] }; }); };
+
     const addChecklistItem = () => { if (!newChecklistItem.trim() || !isManager) return; setTaskForm(prev => ({ ...prev, checklists: [...prev.checklists, { id: Date.now(), text: newChecklistItem, isCompleted: false }] })); setNewChecklistItem(''); };
+
     const removeChecklistItem = (id) => { if (!isManager) return; setTaskForm(prev => ({ ...prev, checklists: prev.checklists.filter(item => item.id !== id) })); };
+
     const toggleChecklistCompletion = async (checklistId) => {
         if (!editingTaskId || !boardData) return;
         setTaskForm(prev => ({ ...prev, checklists: prev.checklists.map(item => item.id === checklistId ? { ...item, isCompleted: !item.isCompleted } : item) }));
@@ -205,6 +226,7 @@ const TaskBoard = () => {
             await updateDoc(doc(db, 'boards', 'main-board'), newBoard);
         }
     };
+
     const handleAddComment = async () => {
         if (!newComment.trim() || !editingTaskId || !boardData) return;
         const commentObj = { id: Date.now(), text: newComment, author: currentEmpName, timestamp: new Date().toISOString(), isSystem: false };
@@ -220,6 +242,7 @@ const TaskBoard = () => {
         }
         setNewComment('');
     };
+
     const getAnalytics = () => {
         if (!boardData) return { total: 0, completed: 0, overdue: 0 };
         let allTasks = Object.values(boardData.tasks);
@@ -235,7 +258,6 @@ const TaskBoard = () => {
     return (
         <div className="min-h-screen bg-vps-black flex font-sans">
             <Sidebar />
-            {/* GIẢM PADDING CHO MOBILE: p-4 pt-16 md:pt-20 md:p-8 */}
             <div className="flex-1 md:ml-64 p-3 pt-16 md:pt-20 md:p-8 overflow-hidden flex flex-col h-[100dvh]">
 
                 {/* --- HEADER --- */}
@@ -250,10 +272,9 @@ const TaskBoard = () => {
                         </p>
                     </div>
 
-                    {/* STATS: Cho phép vuốt ngang trên mobile */}
                     <div className="flex gap-3 md:gap-4 overflow-x-auto w-full xl:w-auto pb-2 xl:pb-0 items-center snap-x hide-scrollbar">
                         {notiPermission !== 'granted' && (
-                            <button onClick={requestNotificationPermission} className="snap-start shrink-0 px-3 py-2 md:px-4 md:py-2.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 font-bold rounded-xl text-xs flex items-center gap-2 hover:bg-blue-500/20 transition-all animate-pulse">
+                            <button onClick={handleEnableNotifications} className="snap-start shrink-0 px-3 py-2 md:px-4 md:py-2.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 font-bold rounded-xl text-xs flex items-center gap-2 hover:bg-blue-500/20 transition-all animate-pulse">
                                 <Bell className="w-4 h-4" /> Bật thông báo
                             </button>
                         )}
@@ -273,7 +294,6 @@ const TaskBoard = () => {
                 </div>
 
                 {/* --- BỘ LỌC & SẮP XẾP --- */}
-                {/* TỐI ƯU MOBILE: Xếp chồng dọc thanh search, nhưng cuộn ngang các nút Lọc để tiết kiệm diện tích */}
                 <div className="mb-4 md:mb-6 flex flex-col gap-3 shrink-0 bg-[#1A1A1A] p-3 md:p-4 rounded-xl border border-vps-gray/30">
                     <div className="relative w-full">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
@@ -308,7 +328,6 @@ const TaskBoard = () => {
                 </div>
 
                 {/* --- BẢNG KANBAN --- */}
-                {/* TỐI ƯU MOBILE: snap-x snap-mandatory để lướt mượt từng cột trên điện thoại */}
                 {loading ? (
                     <div className="flex-1 flex items-center justify-center text-vps-gold/50">Đang tải dữ liệu dự án...</div>
                 ) : !boardData ? (
@@ -335,7 +354,6 @@ const TaskBoard = () => {
                             return (
                                 <div
                                     key={column.id}
-                                    // TỐI ƯU MOBILE: Cột chiếm 85vw trên mobile, cố định 320px trên Desktop. snap-center để khi vuốt sẽ tự căn giữa màn hình.
                                     className={`bg-[#181818] rounded-xl md:rounded-2xl flex flex-col min-w-[85vw] md:min-w-[320px] w-[85vw] md:w-[320px] max-h-full shrink-0 shadow-lg transition-all duration-300 snap-center
                                         ${isDraggingOver ? 'bg-[#1e1c15] ring-2 ring-vps-gold' : ''}`}
                                     onDragOver={(e) => handleDragOver(e, column.id)} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, column.id)}
@@ -440,7 +458,6 @@ const TaskBoard = () => {
 
             {/* --- MODAL TRELLO (VIEW & EDIT) --- */}
             {isTaskModalOpen && (
-                // TỐI ƯU MOBILE: Modal sẽ che toàn màn hình (inset-0, h-[100dvh]) ở mobile để tránh bị dính lề.
                 <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-0 md:p-4">
                     <div className="bg-[#1A1A1A] border-0 md:border border-vps-gray/30 rounded-none md:rounded-2xl w-full h-[100dvh] md:h-auto md:max-h-[95vh] max-w-5xl overflow-hidden flex flex-col shadow-2xl relative">
 
@@ -460,7 +477,6 @@ const TaskBoard = () => {
                                     </div>
                                 )}
 
-                                {/* Nội dung chính */}
                                 <div className="flex-1 p-4 md:p-6 space-y-6 md:space-y-8 overflow-y-visible md:overflow-y-auto custom-scrollbar">
                                     <div>
                                         <textarea
@@ -521,7 +537,6 @@ const TaskBoard = () => {
                                     </div>
                                 </div>
 
-                                {/* Bình luận & Log */}
                                 {editingTaskId && (
                                     <div className="h-auto md:h-72 shrink-0 bg-[#151515] border-t border-vps-gray/20 p-4 md:p-5 flex flex-col">
                                         <label className="flex items-center gap-2 text-sm font-bold text-gray-300 mb-4"><MessageSquare className="w-4 h-4 text-gray-500" /> Bình luận</label>
@@ -561,7 +576,6 @@ const TaskBoard = () => {
                                 )}
                             </div>
 
-                            {/* CỘT CÀI ĐẶT (Xếp xuống dưới ở Mobile) */}
                             <div className="w-full md:w-72 bg-[#181818] md:border-l border-t md:border-t-0 border-vps-gray/20 p-4 md:p-6 flex flex-col gap-5 overflow-y-visible md:overflow-y-auto shrink-0 pb-10 md:pb-6">
                                 <div>
                                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 block">Cài đặt Thẻ</label>

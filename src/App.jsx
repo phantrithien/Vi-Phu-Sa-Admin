@@ -5,11 +5,12 @@ import { useAuth } from './contexts/AuthContext';
 // Import các trang
 import Login from './pages/Login/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
-import Accounting from './pages/Accounting/Accounting';
 import Marketing from './pages/Marketing/Marketing';
+import Accounting from './pages/Accounting/Accounting';
 import Production from './pages/Production/Production';
 import HR from './pages/HR/HR';
 import TaskBoard from './pages/TaskBoard/TaskBoard';
+import { PermissionGuard } from './components/PermissionGuard';
 
 // Màng lọc kiểm tra quyền truy cập (Đã sửa đổi)
 const ProtectedRoute = ({ children }) => {
@@ -40,6 +41,18 @@ const App = () => {
 
             {/* Đường dẫn sai -> Trả về trang chủ */}
             <Route path="*" element={<Navigate to="/" replace />} />
+
+            <Route path="/marketing" element={
+                <PermissionGuard allowedDepartments={['marketing']} allowedRoles={['manager', 'staff']}>
+                    <Marketing /> {/* Sửa <MarketingPage /> thành <Marketing /> */}
+                </PermissionGuard>
+            } />
+
+            <Route path="/accounting" element={
+                <PermissionGuard allowedDepartments={['accounting']}>
+                    <Accounting /> {/* Sửa <AccountingPage /> thành <Accounting /> */}
+                </PermissionGuard>
+            } />
         </Routes>
     );
 };

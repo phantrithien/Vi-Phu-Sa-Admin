@@ -3,8 +3,8 @@ self.addEventListener('push', function (event) {
 
     const options = {
         body: data.body,
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
+        icon: '/viphusa-icon.png',
+        badge: '/viphusa-icon.png',
         vibrate: [200, 100, 200],
         data: { url: '/' }
     };
