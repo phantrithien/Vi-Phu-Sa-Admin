@@ -5,7 +5,7 @@ import {
     MoreHorizontal, Cloud, Search, Filter, AlertCircle,
     CheckCircle2, Clock, AlignLeft, CheckSquare, Tag, X,
     Maximize2, MessageSquare, Image as ImageIcon, Send,
-    ArrowUpDown, Bell
+    ArrowUpDown, Bell, Users
 } from 'lucide-react';
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -34,7 +34,7 @@ const LABEL_COLORS = [
 
 const TaskBoard = () => {
     const { currentUser, userRole, requestNotificationPermission: authRequestNoti } = useAuth();
-    
+
     const [employees, setEmployees] = useState([]);
     const [boardData, setBoardData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -51,8 +51,9 @@ const TaskBoard = () => {
     const [editingTaskId, setEditingTaskId] = useState(null);
     const [targetColForNewTask, setTargetColForNewTask] = useState('col-0');
 
+    // NÂNG CẤP: assignee (string) -> assignees (array)
     const [taskForm, setTaskForm] = useState({
-        content: '', description: '', assignee: '', deadline: '',
+        content: '', description: '', assignees: [], deadline: '',
         priority: 'Medium', labels: [], checklists: [], comments: [], coverUrl: ''
     });
 
@@ -96,14 +97,25 @@ const TaskBoard = () => {
         return () => { unsubscribe(); unsubEmployees(); };
     }, [currentUser]);
 
+    // Tự động bật Modal nếu bấm từ Thông báo
+    useEffect(() => {
+        if (!loading && boardData) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const taskIdFromUrl = urlParams.get('taskId');
+            if (taskIdFromUrl && boardData.tasks[taskIdFromUrl]) {
+                handleCardClick(taskIdFromUrl);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+    }, [loading, boardData]);
+
     useEffect(() => {
         if (!currentUser) return;
         const qNoti = query(collection(db, 'notifications'), where('toUid', '==', currentUser.uid), orderBy('createdAt', 'desc'), limit(1));
         const unsubNoti = onSnapshot(qNoti, (snapshot) => {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added') {
-                    const notiData = change.doc.data();
-                    if (notiData.createdAt > sessionStartTimestamp.current) triggerNativeNotification(notiData.title, notiData.body);
+                    // Tắt thông báo frontend để tránh trùng với backend
                 }
             });
         });
@@ -112,22 +124,12 @@ const TaskBoard = () => {
 
     const handleEnableNotifications = async () => {
         if (!('Notification' in window)) return alert('Trình duyệt này không hỗ trợ nhận thông báo.');
-        
         const isSuccess = await authRequestNoti(currentUser.uid);
-        
         if (isSuccess) {
             setNotiPermission('granted');
             alert('Tuyệt vời! Thiết bị của bạn đã sẵn sàng nhận thông báo công việc.');
         } else {
             alert('Bạn cần cấp quyền trên trình duyệt để nhận thông báo.');
-        }
-    };
-
-    const triggerNativeNotification = (title, body) => {
-        if (Notification.permission === 'granted') {
-            navigator.serviceWorker.ready.then((registration) => {
-                registration.showNotification(title, { body: body, icon: '/favicon.ico', vibrate: [200, 100, 200], badge: '/favicon.ico' });
-            });
         }
     };
 
@@ -156,33 +158,55 @@ const TaskBoard = () => {
 
     const openNewTaskModal = (colId = 'col-0') => { if (!isManager) return; resetForm(); setTargetColForNewTask(colId); setIsTaskModalOpen(true); };
 
+    // HÀM NHẬN VIỆC (THAM GIA)
+    const handleJoinTask = async (e, taskId) => {
+        e.stopPropagation();
+        if (!boardData) return;
+
+        const newBoard = { ...boardData };
+        const task = newBoard.tasks[taskId];
+
+        // Hỗ trợ cả dữ liệu cũ
+        let currentAssignees = task.assignees || [];
+        if (task.assignee && currentAssignees.length === 0 && task.assignee !== 'Trống') {
+            currentAssignees = [task.assignee];
+        }
+
+        if (!currentAssignees.includes(currentEmpName)) {
+            currentAssignees.push(currentEmpName);
+        }
+
+        task.assignees = currentAssignees;
+        task.assignee = ""; // Xóa dữ liệu cũ để tránh lỗi
+
+        const systemLog = { id: Date.now(), text: `đã tham gia phụ trách công việc này`, author: currentEmpName, timestamp: new Date().toISOString(), isSystem: true };
+        task.comments = task.comments ? [...task.comments, systemLog] : [systemLog];
+
+        setBoardData(newBoard);
+        await updateDoc(doc(db, 'boards', 'main-board'), newBoard);
+    };
+
     const handleSaveTask = async (e) => {
         e.preventDefault(); if (!boardData || !isManager) return;
         const newBoard = { ...boardData };
 
         if (editingTaskId) {
-            const oldTask = boardData.tasks[editingTaskId];
-            if (oldTask.assignee !== taskForm.assignee && taskForm.assignee) {
-                const assignedEmp = employees.find(emp => emp.name === taskForm.assignee);
-                if (assignedEmp) await addDoc(collection(db, 'notifications'), { toUid: assignedEmp.id, title: '💼 Cập nhật công việc mới', body: `Quản lý vừa chỉ định công việc: "${taskForm.content}" cho bạn.`, createdAt: Date.now() });
-            }
             newBoard.tasks[editingTaskId] = { ...newBoard.tasks[editingTaskId], ...taskForm };
+            // (Tạm ẩn gửi thông báo nội bộ vì đã có Cloud Function)
         } else {
             const newTaskId = `task-${Date.now()}`;
             const systemLog = { id: Date.now(), text: `đã tạo thẻ này trong cột "${newBoard.columns[targetColForNewTask].title}"`, author: currentEmpName, timestamp: new Date().toISOString(), isSystem: true };
             newBoard.tasks[newTaskId] = { id: newTaskId, ...taskForm, comments: [systemLog] };
             newBoard.columns[targetColForNewTask].taskIds.unshift(newTaskId);
 
-            if (taskForm.assignee) {
-                const assignedEmp = employees.find(emp => emp.name === taskForm.assignee);
-                if (assignedEmp) await addDoc(collection(db, 'notifications'), { toUid: assignedEmp.id, title: '🎯 Bạn có công việc mới!', body: `Nội dung: ${taskForm.content}`, createdAt: Date.now() });
-            }
-
             try {
                 await addDoc(collection(db, 'tasks'), {
                     title: taskForm.content,
                     department: "general",
-                    assignee: taskForm.assignee || "",
+                    assignees: taskForm.assignees || [], // Truyền mảng người phụ trách lên
+                    deadline: taskForm.deadline || "",
+                    priority: taskForm.priority || "Medium",
+                    boardTaskId: newTaskId,
                     createdAt: new Date()
                 });
             } catch (err) {
@@ -197,7 +221,18 @@ const TaskBoard = () => {
 
     const handleCardClick = (taskId) => {
         const task = boardData.tasks[taskId];
-        setTaskForm({ content: task.content || '', description: task.description || '', assignee: task.assignee || '', deadline: task.deadline || '', priority: task.priority || 'Medium', labels: task.labels || [], checklists: task.checklists || [], comments: task.comments || [], coverUrl: task.coverUrl || '' });
+        // Xử lý dữ liệu cũ chuyển sang mảng
+        let currentAssignees = task.assignees || [];
+        if (task.assignee && currentAssignees.length === 0 && task.assignee !== 'Trống') {
+            currentAssignees = [task.assignee];
+        }
+
+        setTaskForm({
+            content: task.content || '', description: task.description || '',
+            assignees: currentAssignees, deadline: task.deadline || '',
+            priority: task.priority || 'Medium', labels: task.labels || [],
+            checklists: task.checklists || [], comments: task.comments || [], coverUrl: task.coverUrl || ''
+        });
         setEditingTaskId(taskId); setIsTaskModalOpen(true);
     };
 
@@ -209,12 +244,10 @@ const TaskBoard = () => {
         await updateDoc(doc(db, 'boards', 'main-board'), newBoard);
     };
 
-    const resetForm = () => { setTaskForm({ content: '', description: '', assignee: '', deadline: '', priority: 'Medium', labels: [], checklists: [], comments: [], coverUrl: '' }); setEditingTaskId(null); setNewChecklistItem(''); setNewComment(''); setTargetColForNewTask('col-0'); };
+    const resetForm = () => { setTaskForm({ content: '', description: '', assignees: [], deadline: '', priority: 'Medium', labels: [], checklists: [], comments: [], coverUrl: '' }); setEditingTaskId(null); setNewChecklistItem(''); setNewComment(''); setTargetColForNewTask('col-0'); };
 
     const toggleLabel = (colorId) => { if (!isManager) return; setTaskForm(prev => { const hasLabel = prev.labels.includes(colorId); return { ...prev, labels: hasLabel ? prev.labels.filter(c => c !== colorId) : [...prev.labels, colorId] }; }); };
-
     const addChecklistItem = () => { if (!newChecklistItem.trim() || !isManager) return; setTaskForm(prev => ({ ...prev, checklists: [...prev.checklists, { id: Date.now(), text: newChecklistItem, isCompleted: false }] })); setNewChecklistItem(''); };
-
     const removeChecklistItem = (id) => { if (!isManager) return; setTaskForm(prev => ({ ...prev, checklists: prev.checklists.filter(item => item.id !== id) })); };
 
     const toggleChecklistCompletion = async (checklistId) => {
@@ -235,10 +268,6 @@ const TaskBoard = () => {
         if (task) {
             task.comments = task.comments ? [...task.comments, commentObj] : [commentObj];
             await updateDoc(doc(db, 'boards', 'main-board'), newBoard);
-            if (task.assignee && task.assignee !== currentEmpName) {
-                const assignedEmp = employees.find(emp => emp.name === task.assignee);
-                if (assignedEmp) await addDoc(collection(db, 'notifications'), { toUid: assignedEmp.id, title: '💬 Bình luận mới trong công việc', body: `${currentEmpName} viết: "${newComment}"`, createdAt: Date.now() });
-            }
         }
         setNewComment('');
     };
@@ -246,8 +275,8 @@ const TaskBoard = () => {
     const getAnalytics = () => {
         if (!boardData) return { total: 0, completed: 0, overdue: 0 };
         let allTasks = Object.values(boardData.tasks);
-        if (!isManager) allTasks = allTasks.filter(t => t.assignee === currentEmpName);
-        else if (filterAssignee !== 'All') allTasks = allTasks.filter(t => t.assignee === filterAssignee);
+        if (!isManager) allTasks = allTasks.filter(t => (t.assignees || []).includes(currentEmpName) || t.assignee === currentEmpName);
+        else if (filterAssignee !== 'All') allTasks = allTasks.filter(t => (t.assignees || []).includes(filterAssignee) || t.assignee === filterAssignee);
         const visibleTaskIds = allTasks.map(t => t.id);
         const completedIds = boardData.columns['col-4'].taskIds.filter(id => visibleTaskIds.includes(id));
         const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -259,8 +288,6 @@ const TaskBoard = () => {
         <div className="min-h-screen bg-vps-black flex font-sans">
             <Sidebar />
             <div className="flex-1 md:ml-64 p-3 pt-16 md:pt-20 md:p-8 overflow-hidden flex flex-col h-[100dvh]">
-
-                {/* --- HEADER --- */}
                 <div className="mb-4 md:mb-6 flex flex-col xl:flex-row justify-between items-start xl:items-end gap-4 md:gap-6 shrink-0">
                     <div>
                         <h1 className="text-2xl md:text-3xl font-bold text-vps-gold flex items-center gap-2 md:gap-3">
@@ -293,7 +320,6 @@ const TaskBoard = () => {
                     </div>
                 </div>
 
-                {/* --- BỘ LỌC & SẮP XẾP --- */}
                 <div className="mb-4 md:mb-6 flex flex-col gap-3 shrink-0 bg-[#1A1A1A] p-3 md:p-4 rounded-xl border border-vps-gray/30">
                     <div className="relative w-full">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
@@ -327,7 +353,6 @@ const TaskBoard = () => {
                     </div>
                 </div>
 
-                {/* --- BẢNG KANBAN --- */}
                 {loading ? (
                     <div className="flex-1 flex items-center justify-center text-vps-gold/50">Đang tải dữ liệu dự án...</div>
                 ) : !boardData ? (
@@ -341,8 +366,16 @@ const TaskBoard = () => {
                                 const matchSearch = task.content.toLowerCase().includes(searchQuery.toLowerCase());
                                 const matchPriority = filterPriority === 'All' || task.priority === filterPriority;
                                 let matchAssignee = true;
-                                if (isManager) matchAssignee = filterAssignee === 'All' || task.assignee === filterAssignee;
-                                else matchAssignee = task.assignee === currentEmpName;
+
+                                // Tương thích dữ liệu
+                                let taskAssignees = task.assignees || [];
+                                if (task.assignee && taskAssignees.length === 0 && task.assignee !== 'Trống') taskAssignees = [task.assignee];
+
+                                if (isManager) {
+                                    matchAssignee = filterAssignee === 'All' || taskAssignees.includes(filterAssignee);
+                                } else {
+                                    matchAssignee = taskAssignees.includes(currentEmpName);
+                                }
                                 return matchSearch && matchPriority && matchAssignee;
                             });
 
@@ -375,6 +408,13 @@ const TaskBoard = () => {
                                             const completedChecklists = task.checklists?.filter(c => c.isCompleted).length || 0;
                                             const checklistDone = totalChecklists > 0 && totalChecklists === completedChecklists;
 
+                                            // Xác định nhân sự để hiển thị trên Thẻ
+                                            let displayAssignees = task.assignees || [];
+                                            if (task.assignee && displayAssignees.length === 0 && task.assignee !== 'Trống' && task.assignee !== 'Đang trống') {
+                                                displayAssignees = [task.assignee];
+                                            }
+                                            const assigneesCount = displayAssignees.length;
+
                                             return (
                                                 <div
                                                     key={task.id} draggable={sortType === 'manual'}
@@ -405,7 +445,7 @@ const TaskBoard = () => {
                                                             </button>
                                                         )}
 
-                                                        <h3 className="text-sm font-medium text-vps-ivory mb-2 md:mb-3 leading-snug pr-6">{task.content}</h3>
+                                                        <h3 className="text-sm font-medium text-vps-ivory mb-2 md:mb-3 leading-snug pr-6 uppercase">{task.content}</h3>
 
                                                         <div className="flex flex-wrap items-center gap-2 md:gap-3 text-[10px] md:text-[11px] text-gray-400 mb-2 font-medium">
                                                             {task.description && (<div className="flex items-center gap-1"><AlignLeft className="w-3 h-3" /></div>)}
@@ -422,10 +462,23 @@ const TaskBoard = () => {
                                                         </div>
 
                                                         <div className="flex items-center justify-between text-[10px] border-t border-vps-gray/10 pt-2 mt-auto">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <div className="bg-[#111] p-1 rounded-full"><User className="w-3 h-3 text-vps-gold" /></div>
-                                                                <span className="truncate max-w-[70px] md:max-w-[90px] font-medium text-gray-300">{task.assignee || 'Trống'}</span>
+
+                                                            {/* HIỂN THỊ NHÂN SỰ HOẶC NÚT THAM GIA */}
+                                                            <div className="flex items-center gap-1.5 z-10">
+                                                                <div className="bg-[#111] p-1 rounded-full">
+                                                                    {assigneesCount > 1 ? <Users className="w-3 h-3 text-vps-gold" /> : <User className="w-3 h-3 text-vps-gold" />}
+                                                                </div>
+                                                                {assigneesCount === 0 ? (
+                                                                    <button onClick={(e) => handleJoinTask(e, task.id)} className="bg-vps-gold/20 text-vps-gold px-2 py-1 md:py-0.5 rounded text-[10px] font-bold hover:bg-vps-gold hover:text-black transition-all cursor-pointer relative z-20">
+                                                                        Tham gia
+                                                                    </button>
+                                                                ) : assigneesCount === 1 ? (
+                                                                    <span className="truncate max-w-[70px] md:max-w-[90px] font-medium text-gray-300">{displayAssignees[0]}</span>
+                                                                ) : (
+                                                                    <span className="truncate max-w-[70px] md:max-w-[120px] font-medium text-vps-gold">Nhóm phụ trách ({assigneesCount})</span>
+                                                                )}
                                                             </div>
+
                                                             <div className={`flex items-center gap-1 px-1.5 py-1 rounded-md ${isOverdue ? 'bg-red-500/20 text-red-400 font-bold' : isDueSoon ? 'bg-yellow-500/20 text-yellow-400 font-bold' : 'bg-[#111]'}`}>
                                                                 <Calendar className="w-3 h-3" />
                                                                 <span>{task.deadline ? new Date(task.deadline).toLocaleDateString('vi-VN').substring(0, 5) : '---'}</span>
@@ -464,7 +517,7 @@ const TaskBoard = () => {
                         <div className="p-4 md:p-5 border-b border-vps-gray/20 flex justify-between items-center bg-[#1E1E1E] shrink-0 sticky top-0 z-20">
                             <div className="flex items-center gap-2 md:gap-3 text-vps-gold">
                                 <Maximize2 className="w-4 h-4 md:w-5 md:h-5" />
-                                <h2 className="text-base md:text-lg font-bold">{isManager ? (editingTaskId ? 'Chi tiết Thẻ' : 'Tạo Thẻ Mới') : 'Chi tiết Công việc'}</h2>
+                                <h2 className="text-base md:text-lg font-bold uppercase">{isManager ? (editingTaskId ? 'Chi tiết Thẻ' : 'Tạo Thẻ Mới') : 'Chi tiết Công việc'}</h2>
                             </div>
                             <button onClick={() => setIsTaskModalOpen(false)} className="text-gray-500 hover:text-vps-ivory bg-[#111] p-2 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
                         </div>
@@ -481,7 +534,7 @@ const TaskBoard = () => {
                                     <div>
                                         <textarea
                                             required rows="2" placeholder="Tiêu đề..." disabled={!isManager}
-                                            className="w-full bg-transparent border-none text-xl md:text-2xl font-bold text-vps-ivory focus:ring-0 outline-none resize-none p-0 placeholder-gray-600 disabled:bg-transparent"
+                                            className="w-full bg-transparent border-none text-xl md:text-2xl font-bold text-vps-ivory focus:ring-0 outline-none resize-none p-0 placeholder-gray-600 disabled:bg-transparent uppercase"
                                             value={taskForm.content} onChange={e => setTaskForm({ ...taskForm, content: e.target.value })}
                                         />
                                     </div>
@@ -595,13 +648,31 @@ const TaskBoard = () => {
                                         </div>
                                     </div>
 
-                                    <div className="space-y-3">
+                                    <div className="space-y-4">
+                                        {/* NHÂN SỰ PHỤ TRÁCH LÀ DANH SÁCH CHECKBOX ĐỂ CHỌN NHIỀU NGƯỜI */}
                                         <div>
                                             <label className="text-[11px] font-medium text-gray-400 mb-1 block">Nhân sự phụ trách</label>
-                                            <select disabled={!isManager} className={`w-full bg-[#111] border border-vps-gray/40 rounded-lg p-2.5 text-sm text-vps-ivory focus:border-vps-gold outline-none appearance-none ${!isManager ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`} value={taskForm.assignee} onChange={e => setTaskForm({ ...taskForm, assignee: e.target.value })}>
-                                                <option value="">-- Trống --</option>{employees.map(emp => (<option key={emp.id} value={emp.name}>{emp.name}</option>))}
-                                            </select>
+                                            <div className={`flex flex-col gap-2 bg-[#111] border border-vps-gray/40 rounded-lg p-2.5 max-h-32 overflow-y-auto custom-scrollbar ${!isManager ? 'opacity-70' : ''}`}>
+                                                {employees.map(emp => (
+                                                    <label key={emp.id} className={`flex items-center gap-2 ${isManager ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={taskForm.assignees.includes(emp.name)}
+                                                            onChange={(e) => {
+                                                                if (!isManager) return;
+                                                                if (e.target.checked) setTaskForm({ ...taskForm, assignees: [...taskForm.assignees, emp.name] });
+                                                                else setTaskForm({ ...taskForm, assignees: taskForm.assignees.filter(name => name !== emp.name) });
+                                                            }}
+                                                            disabled={!isManager}
+                                                            className="accent-vps-gold w-3.5 h-3.5"
+                                                        />
+                                                        <span className="text-xs text-vps-ivory">{emp.name}</span>
+                                                    </label>
+                                                ))}
+                                                {employees.length === 0 && <span className="text-xs text-gray-500 italic">Đang tải nhân sự...</span>}
+                                            </div>
                                         </div>
+
                                         <div>
                                             <label className="text-[11px] font-medium text-gray-400 mb-1 block">Hạn chót</label>
                                             <input type="date" disabled={!isManager} className={`w-full bg-[#111] border border-vps-gray/40 rounded-lg p-2.5 text-sm text-vps-ivory focus:border-vps-gold outline-none ${!isManager ? 'opacity-70 cursor-not-allowed' : ''}`} value={taskForm.deadline} onChange={e => setTaskForm({ ...taskForm, deadline: e.target.value })} />

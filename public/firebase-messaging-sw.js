@@ -19,12 +19,12 @@ const messaging = firebase.messaging();
 // Lắng nghe và hiển thị thông báo khi người dùng thu nhỏ web
 messaging.onBackgroundMessage((payload) => {
     console.log('[firebase-messaging-sw.js] Đã nhận tin nhắn chạy ngầm: ', payload);
-    const notificationTitle = payload.notification.title;
-    const notificationOptions = {
-        body: payload.notification.body,
-        icon: '/vite.svg', // Icon của thông báo (bạn có thể thay bằng logo Vị Phù Sa sau)
-        badge: '/vite.svg'
-    };
+    // const notificationTitle = payload.notification.title;
+    // const notificationOptions = {
+    //     body: payload.notification.body,
+    //     icon: '/vite.svg', // Icon của thông báo (bạn có thể thay bằng logo Vị Phù Sa sau)
+    //     badge: '/vite.svg'
+    // };
 
-    self.registration.showNotification(notificationTitle, notificationOptions);
+    // self.registration.showNotification(notificationTitle, notificationOptions);
 });
