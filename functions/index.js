@@ -61,7 +61,7 @@ exports.onTaskCreated = onDocumentCreated("tasks/{taskId}", async (event) => {
 
     const uniqueTokens = [...new Set(tokens)];
     const validTokensBatch = uniqueTokens.slice(0, 500);
-    const appDomain = "https://viphusa-admin.vercel.app";
+    const appDomain = "https://vi-phu-sa-admin.vercel.app/";
 
     // 3. Cấu trúc lại nội dung thông báo kèm Ưu tiên
     const message = {
