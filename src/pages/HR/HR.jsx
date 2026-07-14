@@ -33,6 +33,7 @@ import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { ROLES } from '../../constants/roles';
 import { EMPLOYEE_STATUSES, EMPLOYEE_STATUS_LABELS } from '../../constants/statuses';
+import { employeeService } from '../../services/employeeService';
 
 const createEmptyFormData = () => ({
     name: '',
@@ -74,17 +75,21 @@ const HR = () => {
     const [avatarPreview, setAvatarPreview] = useState(null);
 
     useEffect(() => {
-        const q = query(collection(db, 'employees'), orderBy('name', 'asc'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const data = snapshot.docs.map((docSnapshot) => ({
-                id: docSnapshot.id,
-                ...docSnapshot.data(),
-            }));
-            setEmployees(data);
-            setLoading(false);
-        });
+        const loadEmployees = async () => {
+            try {
+                const data = await employeeService.list({
+                    filters: [{ field: 'isDeleted', operator: '==', value: false }],
+                    order: { field: 'name', direction: 'asc' },
+                });
+                setEmployees(data);
+            } catch (error) {
+                console.error('Lỗi tải nhân sự:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-        return () => unsubscribe();
+        loadEmployees();
     }, []);
 
     useEffect(() => {
@@ -170,7 +175,7 @@ const HR = () => {
                 });
             }
 
-            await deleteDoc(doc(db, 'employees', id));
+            await employeeService.softDelete(id, currentUser?.uid || null);
             await deleteDoc(doc(db, 'users', id));
             alert('Đã xóa hồ sơ và thu hồi quyền truy cập thành công!');
         } catch (error) {
@@ -215,15 +220,14 @@ const HR = () => {
                 }
 
                 const { password, ...safeEmployeeData } = formData;
-                await setDoc(
-                    doc(db, 'employees', editingId),
+                await employeeService.update(
+                    editingId,
                     {
                         ...safeEmployeeData,
                         avatarUrl: updatedAvatarUrl,
                         roleLevel: assignedRole,
-                        updatedAt: Date.now(),
                     },
-                    { merge: true }
+                    userRole || null
                 );
                 await setDoc(
                     doc(db, 'users', editingId),
@@ -264,16 +268,14 @@ const HR = () => {
                 );
 
                 const { password, ...safeEmployeeData } = formData;
-                await setDoc(
-                    doc(db, 'employees', newUid),
+                await employeeService.create(
                     {
                         ...safeEmployeeData,
                         uid: newUid,
                         avatarUrl: newAvatarUrl,
                         roleLevel: assignedRole,
-                        createdAt: Date.now(),
                     },
-                    { merge: true }
+                    newUid
                 );
 
                 alert(`Đã tạo tài khoản thành công!\nEmail: ${formData.email}\nQuyền HT: ${assignedRole}`);
