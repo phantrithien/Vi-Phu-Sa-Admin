@@ -1,12 +1,10 @@
 import {
     addDoc,
     collection,
-    deleteDoc,
     doc,
     getDoc,
     getDocs,
     query,
-    setDoc,
     updateDoc,
     where,
     orderBy,
@@ -28,11 +26,20 @@ const buildBasePayload = (userId = null, overrides = {}) => ({
 export const createFirestoreService = (collectionName) => {
     const ref = collection(db, collectionName);
 
+    const normalizeRecord = (item) => {
+        const data = item?.data?.() || {};
+        const normalized = { id: item.id, ...data };
+        if (normalized.isDeleted === undefined) {
+            normalized.isDeleted = false;
+        }
+        return normalized;
+    };
+
     return {
         async getById(id) {
             const snapshot = await getDoc(doc(db, collectionName, id));
             if (!snapshot.exists()) return null;
-            return { id: snapshot.id, ...snapshot.data() };
+            return normalizeRecord(snapshot);
         },
 
         async list({ filters = [], order = null, pageSize = 50, cursor = null } = {}) {
@@ -55,7 +62,7 @@ export const createFirestoreService = (collectionName) => {
             }
 
             const snapshot = await getDocs(q);
-            return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+            return snapshot.docs.map((item) => normalizeRecord(item));
         },
 
         async create(payload, userId = null) {
