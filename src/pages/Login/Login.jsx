@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../../config/firebase';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -9,6 +8,7 @@ const Login = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const { login } = useAuth();
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -16,8 +16,8 @@ const Login = () => {
         setLoading(true);
 
         try {
-            await signInWithEmailAndPassword(auth, email, password);
-            navigate('/'); // Đăng nhập thành công thì đẩy về trang chủ (Dashboard)
+            await login(email, password);
+            navigate('/app/dashboard');
         } catch (err) {
             console.error(err);
             setError('Email hoặc mật khẩu không chính xác. Vui lòng thử lại!');
