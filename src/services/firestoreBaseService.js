@@ -4,12 +4,7 @@ import {
     doc,
     getDoc,
     getDocs,
-    query,
     updateDoc,
-    where,
-    orderBy,
-    limit,
-    startAfter,
 } from 'firebase/firestore';
 
 import { db } from '../config/firebase';
@@ -42,27 +37,36 @@ export const createFirestoreService = (collectionName) => {
             return normalizeRecord(snapshot);
         },
 
-        async list({ filters = [], order = null, pageSize = 50, cursor = null } = {}) {
-            let q = query(ref);
+        async list({ filters = [], order = null, pageSize = 50 } = {}) {
+            const snapshot = await getDocs(ref);
+            let records = snapshot.docs.map((item) => normalizeRecord(item));
 
-            filters.forEach((filter) => {
-                q = query(q, where(filter.field, filter.operator, filter.value));
+            records = records.filter((item) => {
+                return filters.every((filter) => {
+                    const value = item[filter.field];
+                    switch (filter.operator) {
+                        case '==':
+                            return value === filter.value;
+                        case '!=':
+                            return value !== filter.value;
+                        case 'in':
+                            return Array.isArray(filter.value) ? filter.value.includes(value) : false;
+                        default:
+                            return true;
+                    }
+                });
             });
 
             if (order) {
-                q = query(q, orderBy(order.field, order.direction || 'asc'));
+                records.sort((a, b) => {
+                    const left = a[order.field] ?? '';
+                    const right = b[order.field] ?? '';
+                    const result = String(left).localeCompare(String(right));
+                    return order.direction === 'desc' ? -result : result;
+                });
             }
 
-            if (pageSize) {
-                q = query(q, limit(pageSize));
-            }
-
-            if (cursor) {
-                q = query(q, startAfter(cursor));
-            }
-
-            const snapshot = await getDocs(q);
-            return snapshot.docs.map((item) => normalizeRecord(item));
+            return records.slice(0, pageSize);
         },
 
         async create(payload, userId = null) {

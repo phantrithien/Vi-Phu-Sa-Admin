@@ -81,7 +81,7 @@ const HR = () => {
                     filters: [{ field: 'isDeleted', operator: '==', value: false }],
                     order: { field: 'name', direction: 'asc' },
                 });
-                setEmployees(data);
+                setEmployees(data.filter((employee) => !employee.isDeleted));
             } catch (error) {
                 console.error('Lỗi tải nhân sự:', error);
             } finally {
