@@ -1,82 +1,129 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { auth, db } from '../config/firebase';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { getMessaging, getToken } from 'firebase/messaging';
+import { getToken } from 'firebase/messaging';
+import { auth, db, messaging } from '../config/firebase';
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
+
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null);
     const [userRole, setUserRole] = useState(null);
+    const [userDepartment, setUserDepartment] = useState(null);
+    const [userData, setUserData] = useState(null);
     const [loading, setLoading] = useState(true);
-
-    // Hàm này CHỈ được gọi khi người dùng BẤM NÚT
-    const requestNotificationPermission = async (userId) => {
-        try {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                const messaging = getMessaging(auth.app);
-                const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-                const currentToken = await getToken(messaging, {
-                    vapidKey: 'BKcg2H_vLdtULLGlNdheMPc3aZYCwyxZgUt7aVWfNmAZxi6wqpA_dNwMpr0tmQzgZCMeNa1v9w2CW8Jza-XQliM',
-                    serviceWorkerRegistration: swRegistration
-                });
-
-                if (currentToken) {
-                    console.log('✅ Đã lấy được Token:', currentToken);
-                    const userRef = doc(db, 'users', userId);
-                    await setDoc(userRef, { fcmToken: currentToken }, { merge: true });
-                    console.log('✅ Đã lưu Token lên Firestore thành công!');
-                    return true; // Trả về true nếu thành công
-                }
-            }
-            return false;
-        } catch (error) {
-            console.error('❌ Lỗi khi lấy token thông báo:', error);
-            return false;
-        }
-    };
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                setCurrentUser(user);
-                try {
-                    const userDoc = await getDoc(doc(db, 'users', user.uid));
-                    if (userDoc.exists()) {
-                        setUserRole('founder');
-                    } else {
-                        setUserRole('founder');
-                    }
-                    // ĐÃ XÓA: requestNotificationPermission(user.uid); ở đây
-                } catch (error) {
-                    console.error("Lỗi hệ thống phân quyền:", error);
-                    setUserRole('founder');
+            setLoading(true);
+
+            try {
+                if (!user) {
+                    setCurrentUser(null);
+                    setUserRole(null);
+                    setUserDepartment(null);
+                    setUserData(null);
+                    return;
                 }
-            } else {
-                setCurrentUser(null);
+
+                setCurrentUser(user);
+
+                const userRef = doc(db, 'users', user.uid);
+                const userSnap = await getDoc(userRef);
+
+                let role = 'staff';
+                let department = null;
+                let data = {
+                    email: user.email,
+                    role,
+                    department,
+                };
+
+                if (userSnap.exists()) {
+                    data = {
+                        ...data,
+                        ...userSnap.data(),
+                    };
+                    role = data.role || role;
+                    department = data.department || null;
+                } else {
+                    await setDoc(userRef, {
+                        email: user.email,
+                        role,
+                        createdAt: Date.now(),
+                    }, { merge: true });
+                }
+
+                const employeeRef = doc(db, 'employees', user.uid);
+                const employeeSnap = await getDoc(employeeRef);
+
+                if (employeeSnap.exists()) {
+                    const employeeData = employeeSnap.data();
+                    department = department || employeeData.department || null;
+
+                    data = {
+                        ...data,
+                        employee: employeeData,
+                        department,
+                    };
+                }
+
+                setUserRole(role);
+                setUserDepartment(department);
+                setUserData(data);
+            } catch (error) {
+                console.error('Lỗi tải thông tin người dùng:', error);
                 setUserRole(null);
+                setUserDepartment(null);
+                setUserData(null);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         });
 
-        return unsubscribe;
+        return () => unsubscribe();
     }, []);
 
-    // Xuất hàm này ra để các component khác (như TaskBoard) có thể gọi
-    const value = { currentUser, userRole, requestNotificationPermission };
+    const requestNotificationPermission = useCallback(async (uid) => {
+        try {
+            if (!uid) return false;
+            if (!('Notification' in window)) return false;
+
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') return false;
+
+            const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+            const token = await getToken(messaging, vapidKey ? { vapidKey } : undefined);
+
+            if (!token) return false;
+
+            await setDoc(doc(db, 'users', uid), {
+                fcmToken: token,
+                notificationEnabled: true,
+                updatedAt: Date.now(),
+            }, { merge: true });
+
+            return true;
+        } catch (error) {
+            console.error('Lỗi cấp quyền thông báo:', error);
+            return false;
+        }
+    }, []);
+
+    const value = {
+        currentUser,
+        userRole,
+        userDepartment,
+        userData,
+        loading,
+        requestNotificationPermission,
+    };
 
     return (
         <AuthContext.Provider value={value}>
-            {loading ? (
-                <div style={{ minHeight: '100vh', backgroundColor: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D4AF37', fontFamily: 'serif', fontSize: '1.5rem' }}>
-                    Đang kết nối Vị Phù Sa...
-                </div>
-            ) : (
-                children
-            )}
+            {!loading && children}
         </AuthContext.Provider>
     );
 };
