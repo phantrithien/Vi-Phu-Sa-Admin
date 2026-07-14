@@ -1,5 +1,5 @@
 import React from 'react';
-import Sidebar from '../../components/Sidebar';
+import AppShell from '../../components/AppShell';
 import { Hammer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,33 +7,35 @@ const ComingSoon = ({ title, description }) => {
     const navigate = useNavigate();
 
     return (
-        <div className="min-h-screen bg-vps-black flex">
-            <Sidebar />
-            <div className="flex-1 md:ml-64 p-4 pt-20 md:p-8 overflow-y-auto flex items-center justify-center">
+        <AppShell title={title || 'Coming soon'} subtitle={description || 'Phân hệ đang được thiết kế cho sprint tiếp theo.'}>
+            <div className="min-h-[70vh] flex items-center justify-center">
+                <div className="max-w-2xl w-full bg-[#1A1A1A] border border-vps-gray/30 rounded-3xl p-8 md:p-12 text-center shadow-2xl relative overflow-hidden">
+                    <div className="absolute -top-24 -right-24 w-56 h-56 bg-vps-gold/10 rounded-full blur-3xl" />
 
-                <div className="bg-[#1E1E1E] border border-vps-gray p-10 rounded-2xl shadow-2xl text-center max-w-lg w-full relative overflow-hidden">
-                    {/* Hiệu ứng ánh sáng */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-32 bg-vps-gold/10 blur-3xl rounded-full pointer-events-none"></div>
+                    <div className="relative z-10">
+                        <div className="w-16 h-16 rounded-2xl bg-vps-gold/10 border border-vps-gold/30 flex items-center justify-center mx-auto mb-6">
+                            <Hammer className="w-8 h-8 text-vps-gold" />
+                        </div>
 
-                    <div className="w-20 h-20 bg-[#111] border border-vps-gray rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                        <Hammer className="w-8 h-8 text-vps-gold" />
+                        <h1 className="text-3xl md:text-4xl font-serif font-bold text-vps-gold mb-4">
+                            {title}
+                        </h1>
+
+                        <p className="text-vps-ivory/65 leading-relaxed mb-8">
+                            {description ||
+                                'Phân hệ này đang trong quá trình thiết kế theo kiến trúc Internal Operating System và sẽ được phát triển ở các sprint tiếp theo.'}
+                        </p>
+
+                        <button
+                            onClick={() => navigate('/')}
+                            className="px-6 py-3 bg-[#111] border border-vps-gray text-vps-ivory hover:text-vps-gold hover:border-vps-gold transition-colors rounded-xl font-medium"
+                        >
+                            Quay lại Command Center
+                        </button>
                     </div>
-
-                    <h1 className="text-3xl font-serif font-bold text-vps-gold mb-3">{title}</h1>
-                    <p className="text-vps-ivory opacity-60 mb-8 leading-relaxed">
-                        {description || 'Phân hệ này đang trong quá trình thiết kế và sẽ sớm được cập nhật trong các phiên bản tiếp theo của hệ thống.'}
-                    </p>
-
-                    <button
-                        onClick={() => navigate('/')}
-                        className="px-6 py-3 bg-[#111] border border-vps-gray text-vps-ivory hover:text-vps-gold hover:border-vps-gold transition-colors rounded-lg font-medium"
-                    >
-                        Quay lại Tổng quan
-                    </button>
                 </div>
-
             </div>
-        </div>
+        </AppShell>
     );
 };
 

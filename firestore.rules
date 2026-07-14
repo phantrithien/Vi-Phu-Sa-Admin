@@ -1,0 +1,214 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function hasUserDoc() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function role() {
+      return hasUserDoc() ? userDoc().data.role : null;
+    }
+
+    function isOwner() {
+      return role() == 'owner';
+    }
+
+    function isAdmin() {
+      return role() == 'admin';
+    }
+
+    function isProducer() {
+      return role() == 'producer';
+    }
+
+    function isAccountant() {
+      return role() == 'accountant';
+    }
+
+    function isEditor() {
+      return role() == 'editor';
+    }
+
+    function isViewer() {
+      return role() == 'viewer';
+    }
+
+    function isOwnerOrAdmin() {
+      return isOwner() || isAdmin();
+    }
+
+    function canManageProjects() {
+      return isOwner() || isAdmin() || isProducer();
+    }
+
+    function canManageSops() {
+      return isOwner() || isAdmin() || isProducer();
+    }
+
+    function canManageTasks() {
+      return isOwner() || isAdmin() || isProducer() || isEditor();
+    }
+
+    function canManageFinance() {
+      return isOwner() || isAdmin() || isAccountant();
+    }
+
+    function canManageArchive() {
+      return isOwner() || isAdmin() || isProducer();
+    }
+
+    function hasRequiredFields(requiredFields) {
+      return request.resource.data.keys().hasAll(requiredFields);
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isOwnerOrAdmin());
+      allow create: if signedIn() && (
+        request.auth.uid == userId || isOwnerOrAdmin()
+      );
+      allow update: if signedIn() && (
+        request.auth.uid == userId || isOwnerOrAdmin()
+      );
+      allow delete: if signedIn() && isOwner();
+    }
+
+    match /sops/{sopId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && canManageSops()
+        && hasRequiredFields(['title', 'category', 'status', 'steps']);
+      allow update: if signedIn()
+        && canManageSops();
+      allow delete: if signedIn()
+        && isOwnerOrAdmin();
+    }
+
+    match /projects/{projectId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && canManageProjects()
+        && hasRequiredFields(['name', 'type', 'status']);
+      allow update: if signedIn()
+        && canManageProjects();
+      allow delete: if signedIn()
+        && isOwnerOrAdmin();
+    }
+
+    match /projectChecklists/{checklistId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && canManageProjects()
+        && hasRequiredFields(['projectId', 'sopId', 'items']);
+      allow update: if signedIn()
+        && canManageProjects();
+      allow delete: if signedIn()
+        && isOwnerOrAdmin();
+    }
+
+    match /projectTasks/{taskId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && canManageTasks()
+        && hasRequiredFields(['projectId', 'title', 'status']);
+      allow update: if signedIn()
+        && canManageTasks();
+      allow delete: if signedIn()
+        && isOwnerOrAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && canManageTasks()
+        && hasRequiredFields(['projectId', 'title', 'status']);
+      allow update: if signedIn()
+        && canManageTasks();
+      allow delete: if signedIn()
+        && isOwnerOrAdmin();
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if signedIn() && canManageFinance();
+      allow create: if signedIn()
+        && canManageFinance()
+        && hasRequiredFields(['projectId', 'amount', 'category']);
+      allow update: if signedIn()
+        && canManageFinance();
+      allow delete: if signedIn()
+        && isOwnerOrAdmin();
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if signedIn() && canManageFinance();
+      allow create: if signedIn()
+        && canManageFinance()
+        && hasRequiredFields(['projectId', 'amount', 'status']);
+      allow update: if signedIn()
+        && canManageFinance();
+      allow delete: if signedIn()
+        && isOwnerOrAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if signedIn() && canManageFinance();
+      allow create: if signedIn()
+        && canManageFinance()
+        && hasRequiredFields(['projectId', 'amount']);
+      allow update: if signedIn()
+        && canManageFinance();
+      allow delete: if signedIn()
+        && isOwnerOrAdmin();
+    }
+
+    match /files/{fileId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && (canManageProjects() || isEditor())
+        && hasRequiredFields(['projectId', 'name', 'url', 'provider', 'type']);
+      allow update: if signedIn()
+        && (canManageProjects() || isEditor());
+      allow delete: if signedIn()
+        && isOwnerOrAdmin();
+    }
+
+    match /file_links/{fileId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && (canManageProjects() || isEditor())
+        && hasRequiredFields(['projectId', 'title', 'url']);
+      allow update: if signedIn()
+        && (canManageProjects() || isEditor());
+      allow delete: if signedIn()
+        && isOwnerOrAdmin();
+    }
+
+    match /archives/{archiveId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && canManageArchive()
+        && hasRequiredFields(['projectId', 'title']);
+      allow update: if signedIn()
+        && canManageArchive();
+      allow delete: if signedIn()
+        && isOwnerOrAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if signedIn() && isOwnerOrAdmin();
+      allow write: if signedIn() && isOwnerOrAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

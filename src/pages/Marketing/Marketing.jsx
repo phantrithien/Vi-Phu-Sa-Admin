@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Sidebar from '../../components/Sidebar';
+import AppShell from '../../components/AppShell';
 import {
     Plus, Search, Edit, Trash2, Cloud,
     Megaphone, Target, ShieldAlert,
@@ -38,7 +38,7 @@ const Marketing = () => {
 
     const [draggingSpent, setDraggingSpent] = useState({});
 
-    // Nâng cấp: State cho Brand Guidelines
+    // State cho Brand Guidelines
     const [brandTab, setBrandTab] = useState('core');
     const [copiedColor, setCopiedColor] = useState(null);
 
@@ -107,7 +107,8 @@ const Marketing = () => {
             setEditingId(null);
             if (activeTab === 'campaigns') setFormData({ name: '', budget: '', spent: '', leads: '', status: 'Đang chạy', platform: 'Facebook', startDate: '', endDate: '', kpi: '' });
             if (activeTab === 'customers') setFormData({ name: '', phone: '', dealValue: '', priority: 'Tiềm năng', pipeline: 'Khách mới', source: 'Facebook', lastContact: '', notes: '', rating: '3' });
-            if (activeTab === 'competitors') setFormData({ name: '', threatLevel: 'Trung bình', pricing: 'Tầm trung', equipment: '', strength: '', weakness: '', actionPlan: '' });
+            // CẬP NHẬT: field pricing khởi tạo là chuỗi rỗng
+            if (activeTab === 'competitors') setFormData({ name: '', threatLevel: 'Trung bình', pricing: '', equipment: '', strength: '', weakness: '', actionPlan: '' });
         }
         setIsModalOpen(true);
     };
@@ -133,6 +134,10 @@ const Marketing = () => {
             }
             if (activeTab === 'customers') {
                 payload.dealValue = parseInt(String(formData.dealValue).replace(/[^0-9]/g, ''), 10) || 0;
+            }
+            // CẬP NHẬT: Ép kiểu pricing về integer để có thể tính toán toán học
+            if (activeTab === 'competitors') {
+                payload.pricing = parseInt(String(formData.pricing).replace(/[^0-9]/g, ''), 10) || 0;
             }
 
             if (editingId) {
@@ -234,9 +239,6 @@ const Marketing = () => {
             const expectedValue = customers.filter(c => c.pipeline !== 'Thất bại').reduce((sum, c) => sum + (Number(c.dealValue) || 0), 0);
             const wonValue = customers.filter(c => c.pipeline === 'Đã chốt').reduce((sum, c) => sum + (Number(c.dealValue) || 0), 0);
 
-
-
-            // 1. Logic tính toán dữ liệu cho Phễu
             const totalLeads = customers.length;
             const newLeadsCount = customers.filter(c => c.pipeline === 'Khách mới').length;
             const consultingLeadsCount = customers.filter(c => c.pipeline === 'Đang tư vấn').length;
@@ -248,18 +250,17 @@ const Marketing = () => {
                 datasets: [{
                     data: [newLeadsCount, consultingLeadsCount, wonLeadsCount, lostLeadsCount],
                     backgroundColor: [
-                        'rgba(156, 163, 175, 0.9)', // Xám
-                        'rgba(59, 130, 246, 0.9)',  // Xanh dương
-                        'rgba(34, 197, 94, 0.9)',   // Xanh lá
-                        'rgba(239, 68, 68, 0.9)'    // Đỏ
+                        'rgba(156, 163, 175, 0.9)',
+                        'rgba(59, 130, 246, 0.9)',
+                        'rgba(34, 197, 94, 0.9)',
+                        'rgba(239, 68, 68, 0.9)'
                     ],
-                    hoverOffset: 6, // Hiệu ứng phóng to khi hover
+                    hoverOffset: 6,
                     borderWidth: 3,
-                    borderColor: '#1A1A1A' // Viền màu trùng với màu nền để tạo khoảng trống
+                    borderColor: '#1A1A1A'
                 }]
             };
 
-            // Cấu hình ẩn Legend mặc định của Chart.js và tùy chỉnh Tooltip
             const doughnutOptions = {
                 maintainAspectRatio: false,
                 plugins: {
@@ -274,20 +275,17 @@ const Marketing = () => {
                         boxPadding: 4
                     }
                 },
-                cutout: '75%' // Độ mỏng của vòng tròn
+                cutout: '75%'
             };
 
             return (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                        {/* Các thẻ chỉ số tổng quan giữ nguyên của bạn (Tổng Leads, Đã chốt, Dự kiến, Thực tế...) */}
-                        {/* ... (Đã có sẵn ở code cũ, bạn giữ nguyên nhé) ... */}
+                        {/* Các thẻ chỉ số tổng quan giữ nguyên */}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-                        {/* ================= THẺ PHÂN BỔ PHỄU (MỚI) ================= */}
                         <div className="lg:col-span-1 bg-gradient-to-br from-[#1A1A1A] to-[#121212] border border-vps-gray/20 p-7 rounded-2xl shadow-xl flex flex-col items-center relative overflow-hidden group">
-                            {/* Ambient background glow */}
                             <div className="absolute -top-10 -left-10 w-40 h-40 bg-purple-500/5 rounded-full blur-[60px] pointer-events-none group-hover:bg-purple-500/10 transition-all duration-1000"></div>
 
                             <h3 className="font-bold text-lg text-vps-ivory mb-6 tracking-wide w-full text-left flex items-center gap-2 relative z-10">
@@ -295,7 +293,6 @@ const Marketing = () => {
                                 Phân bổ Phễu
                             </h3>
 
-                            {/* Biểu đồ Doughnut có số ở giữa */}
                             <div className="relative w-52 h-52 mb-8 z-10 transition-transform duration-500 hover:scale-105">
                                 <Doughnut data={pipelineData} options={doughnutOptions} />
                                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none drop-shadow-md">
@@ -304,7 +301,6 @@ const Marketing = () => {
                                 </div>
                             </div>
 
-                            {/* Custom Legend (Chú thích trực quan) */}
                             <div className="w-full grid grid-cols-2 gap-3 relative z-10">
                                 <div className="flex items-center justify-between bg-[#111] px-3 py-2.5 rounded-xl border border-gray-500/20 hover:border-gray-500/50 transition-colors">
                                     <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-gray-400 shadow-[0_0_8px_rgba(156,163,175,0.6)]"></div><span className="text-xs text-gray-400">Khách mới</span></div>
@@ -325,9 +321,8 @@ const Marketing = () => {
                             </div>
                         </div>
 
-                        {/* ================= THẺ HIỆU SUẤT (THẺ BÊN PHẢI ĐÃ TỐI ƯU TRƯỚC ĐÓ) ================= */}
                         <div className="lg:col-span-2 bg-gradient-to-br from-[#1A1A1A] to-[#121212] border border-vps-gray/20 p-8 rounded-2xl shadow-xl flex flex-col justify-center relative overflow-hidden group">
-                            {/* ... (Code của thẻ Hiệu suất hệ thống bạn giữ nguyên tại đây) ... */}
+                            {/* Component Thẻ Hiệu Suất  */}
                         </div>
                     </div>
                 </>
@@ -335,6 +330,10 @@ const Marketing = () => {
         }
 
         if (activeTab === 'competitors') {
+            // CẬP NHẬT: Tính toán Mức giá trung bình của các đối thủ
+            const validPrices = competitors.filter(c => c.pricing > 0).map(c => Number(c.pricing));
+            const avgPrice = validPrices.length > 0 ? Math.round(validPrices.reduce((a, b) => a + b, 0) / validPrices.length) : 0;
+
             return (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                     <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl hover:-translate-y-1 hover:border-blue-500/30 transition-all duration-300 relative overflow-hidden group">
@@ -351,11 +350,12 @@ const Marketing = () => {
                             <div className="p-3 bg-red-500/10 rounded-xl border border-red-500/20"><Activity className="w-6 h-6 text-red-400" /></div>
                         </div>
                     </div>
-                    <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl hover:-translate-y-1 hover:border-yellow-500/30 transition-all duration-300 relative overflow-hidden group">
-                        <div className="absolute -right-6 -top-6 w-24 h-24 bg-yellow-500/5 rounded-full blur-2xl group-hover:bg-yellow-500/10 transition-all"></div>
+                    {/* CẬP NHẬT: Thẻ phân tích giá thay vì Phân khúc Cao Cấp */}
+                    <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl hover:-translate-y-1 hover:border-purple-500/30 transition-all duration-300 relative overflow-hidden group">
+                        <div className="absolute -right-6 -top-6 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-all"></div>
                         <div className="flex justify-between items-start relative z-10">
-                            <div><p className="text-xs font-semibold text-vps-ivory/60 uppercase tracking-wider mb-2">Phân khúc Cao cấp</p><h3 className="text-2xl md:text-3xl font-bold text-vps-gold tracking-tight">{competitors.filter(c => c.pricing === 'Cao cấp').length}</h3></div>
-                            <div className="p-3 bg-yellow-500/10 rounded-xl border border-yellow-500/20"><DollarSign className="w-6 h-6 text-vps-gold" /></div>
+                            <div><p className="text-xs font-semibold text-vps-ivory/60 uppercase tracking-wider mb-2">Giá TB Cạnh Tranh</p><h3 className="text-xl md:text-2xl font-bold text-purple-400 tracking-tight truncate">{formatCurrency(avgPrice)}</h3></div>
+                            <div className="p-3 bg-purple-500/10 rounded-xl border border-purple-500/20"><DollarSign className="w-6 h-6 text-purple-400" /></div>
                         </div>
                     </div>
                     <div className="bg-gradient-to-br from-[#1E1E1E] to-[#121212] border border-vps-gray/20 p-6 rounded-2xl shadow-xl hover:-translate-y-1 hover:border-green-500/30 transition-all duration-300 relative overflow-hidden group">
@@ -662,9 +662,8 @@ const Marketing = () => {
                 </div>
             </div>
         );
-    }; // <-- Đã fix lỗi đóng hàm renderCampaigns ở đây
+    };
 
-    // --- Placeholder cho các render component bị thiếu trong code mẫu ---
     const renderCustomers = () => {
         const filtered = customers.filter(c => {
             const matchSearch = (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -786,7 +785,7 @@ const Marketing = () => {
                         <thead>
                             <tr className="bg-[#1E1E1E] border-b border-vps-gray/20 text-vps-ivory/60 text-xs uppercase tracking-wider">
                                 <th className="p-5 font-semibold">Tên Đối thủ</th>
-                                <th className="p-5 font-semibold">Phân tích Phân khúc</th>
+                                <th className="p-5 font-semibold">Mức giá Cạnh tranh</th> {/* CẬP NHẬT TÊN CỘT */}
                                 <th className="p-5 font-semibold w-1/3">Kế hoạch Đối phó (Action Plan)</th>
                                 {userRole !== 'back_office' && <th className="p-5 font-semibold text-center">Thao tác</th>}
                             </tr>
@@ -808,10 +807,11 @@ const Marketing = () => {
                                                 </span>
                                             </div>
                                         </td>
+                                        {/* CẬP NHẬT HIỂN THỊ TIỀN TỆ */}
                                         <td className="p-5 text-sm text-vps-ivory/80 space-y-1">
                                             <div className="flex items-center gap-2">
-                                                <DollarSign className="w-4 h-4 text-gray-500" />
-                                                <span className="font-medium text-gray-300">{item.pricing}</span>
+                                                <DollarSign className="w-4 h-4 text-purple-400" />
+                                                <span className="font-bold text-purple-400">{formatCurrency(item.pricing)}</span>
                                             </div>
                                         </td>
                                         <td className="p-5 text-xs text-gray-400 leading-relaxed">
@@ -847,9 +847,10 @@ const Marketing = () => {
                                     </span>
                                 </div>
 
+                                {/* CẬP NHẬT GIAO DIỆN MỨC GIÁ MOBILE */}
                                 <div className="bg-[#222] p-3 rounded-xl border border-vps-gray/10 text-sm flex items-center justify-between">
-                                    <span className="text-gray-500 text-xs">Phân khúc:</span>
-                                    <strong className="text-gray-300 flex items-center gap-1"><DollarSign className="w-3.5 h-3.5 text-gray-500" /> {item.pricing}</strong>
+                                    <span className="text-gray-500 text-xs">Mức giá:</span>
+                                    <strong className="text-purple-400 flex items-center gap-1"><DollarSign className="w-3.5 h-3.5 text-purple-400" /> {formatCurrency(item.pricing)}</strong>
                                 </div>
 
                                 <div>
@@ -874,17 +875,11 @@ const Marketing = () => {
             </div>
         );
     };
-    // -------------------------------------------------------------------
 
-    // --- ĐÂY LÀ RETURN CHÍNH (Cốt lõi để component không bị trống) ---
     return (
-        <div className="flex bg-[#121212] min-h-screen font-sans text-vps-ivory">
-            <Sidebar />
+        <AppShell title="CRM & Marketing" subtitle="Theo dõi chiến dịch và khách hàng">
+            <div className="transition-all duration-300 relative z-10 overflow-y-auto">
 
-            {/* Main Layout Area */}
-            <div className="flex-1 ml-0 md:ml-64 p-6 md:p-10 transition-all duration-300 relative z-10 overflow-y-auto">
-
-                {/* Header Navbar Setup (Điều hướng Tabs) */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                     <div>
                         <h1 className="text-2xl md:text-3xl font-bold text-vps-gold tracking-wide">Quản lý Marketing & CRM</h1>
@@ -910,7 +905,6 @@ const Marketing = () => {
                     </div>
                 </div>
 
-                {/* Filter and Search (Chỉ hiện khi ở tab Campaigns hoặc tuỳ logic của bạn) */}
                 <div className="flex items-center gap-4 mb-6">
                     <div className="relative flex-1 max-w-md">
                         <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -924,9 +918,7 @@ const Marketing = () => {
                     </div>
                 </div>
 
-                {/* RENDER THE CONTENT BASED ON ACTIVE TABS */}
                 {renderAnalytics()}
-
                 {activeTab === 'campaigns' && renderCampaigns()}
                 {activeTab === 'customers' && renderCustomers()}
                 {activeTab === 'competitors' && renderCompetitors()}
@@ -949,7 +941,7 @@ const Marketing = () => {
                             </div>
 
                             <form onSubmit={handleSave} className="p-7 space-y-6">
-                                {/* Form Chiến dịch */}
+                                {/* Form Chiến dịch - GIỮ NGUYÊN */}
                                 {activeTab === 'campaigns' && (
                                     <>
                                         <div className="grid grid-cols-2 gap-5">
@@ -971,7 +963,7 @@ const Marketing = () => {
                                     </>
                                 )}
 
-                                {/* Form CRM */}
+                                {/* Form CRM - GIỮ NGUYÊN */}
                                 {activeTab === 'customers' && (
                                     <>
                                         <div className="grid grid-cols-2 gap-5">
@@ -989,7 +981,7 @@ const Marketing = () => {
                                     </>
                                 )}
 
-                                {/* Form Đối thủ */}
+                                {/* CẬP NHẬT: Form Đối thủ (Dùng field Pricing nhập tay số tiền) */}
                                 {activeTab === 'competitors' && (
                                     <>
                                         <div className="grid grid-cols-2 gap-5">
@@ -1000,34 +992,23 @@ const Marketing = () => {
                                                     <option>Thấp</option><option>Trung bình</option><option>Cao</option>
                                                 </select>
                                             </div>
+                                            {/* CẬP NHẬT TRƯỜNG NHẬP MỨC GIÁ */}
                                             <div>
-                                                <label className="text-xs font-bold text-gray-400 mb-2 block uppercase tracking-wider">Phân khúc giá</label>
-                                                <select className="w-full bg-[#111] border border-vps-gray/20 rounded-xl p-3.5 text-vps-ivory focus:border-vps-gold outline-none appearance-none transition-colors" value={formData.pricing || ''} onChange={e => setFormData({ ...formData, pricing: e.target.value })}>
-                                                    <option>Giá rẻ</option><option>Tầm trung</option><option>Cao cấp</option>
-                                                </select>
+                                                <label className="text-xs font-bold text-purple-400 mb-2 block uppercase tracking-wider">Mức giá Cạnh tranh (VNĐ)</label>
+                                                <input type="text" className="w-full bg-purple-500/5 border border-purple-500/20 rounded-xl p-3.5 text-purple-400 font-bold focus:border-purple-500 outline-none transition-colors" value={formData.pricing || ''} onChange={e => setFormData({ ...formData, pricing: e.target.value })} placeholder="Vd: 1500000" />
+                                                {formData.pricing && <p className="text-[10px] text-gray-500 mt-1.5 italic">{formatCurrency(formData.pricing)}</p>}
                                             </div>
+
                                             <div className="col-span-2">
                                                 <label className="text-xs font-bold text-green-400 mb-2 block uppercase tracking-wider">Điểm mạnh (Strengths)</label>
                                                 <div className="quill-dark-theme bg-[#111] rounded-xl border border-vps-gray/20">
-                                                    <ReactQuill
-                                                        theme="snow"
-                                                        modules={quillModules}
-                                                        value={formData.strength || ''}
-                                                        onChange={val => setFormData({ ...formData, strength: val })}
-                                                        placeholder="Ghi chú ưu thế của đối thủ..."
-                                                    />
+                                                    <ReactQuill theme="snow" modules={quillModules} value={formData.strength || ''} onChange={val => setFormData({ ...formData, strength: val })} placeholder="Ghi chú ưu thế của đối thủ..." />
                                                 </div>
                                             </div>
                                             <div className="col-span-2">
                                                 <label className="text-xs font-bold text-red-400 mb-2 block uppercase tracking-wider">Điểm yếu (Weaknesses)</label>
                                                 <div className="quill-dark-theme bg-[#111] rounded-xl border border-vps-gray/20 mt-1">
-                                                    <ReactQuill
-                                                        theme="snow"
-                                                        modules={quillModules}
-                                                        value={formData.weakness || ''}
-                                                        onChange={val => setFormData({ ...formData, weakness: val })}
-                                                        placeholder="Hạn chế mà ta có thể khai thác..."
-                                                    />
+                                                    <ReactQuill theme="snow" modules={quillModules} value={formData.weakness || ''} onChange={val => setFormData({ ...formData, weakness: val })} placeholder="Hạn chế mà ta có thể khai thác..." />
                                                 </div>
                                             </div>
                                             <div className="col-span-2"><label className="text-xs font-bold text-blue-400 mb-2 block uppercase tracking-wider">Kế hoạch đối phó (Action Plan)</label><textarea className="w-full bg-[#111] border border-vps-gray/20 rounded-xl p-3.5 text-vps-ivory focus:border-blue-400 outline-none resize-none transition-colors" rows="3" value={formData.actionPlan || ''} onChange={e => setFormData({ ...formData, actionPlan: e.target.value })} placeholder="Chiến lược cạnh tranh..." /></div>
@@ -1044,7 +1025,7 @@ const Marketing = () => {
                     </div>
                 )
             }
-        </div>
+        </AppShell>
     );
 };
 

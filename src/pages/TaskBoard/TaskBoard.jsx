@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Sidebar from '../../components/Sidebar';
+import AppShell from '../../components/AppShell';
 import {
     Plus, Flag, User, Calendar, Trash2, Edit2, Layout,
     MoreHorizontal, Cloud, Search, Filter, AlertCircle,
@@ -10,6 +10,7 @@ import {
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { createTask, updateTask, TASK_PRIORITIES, TASK_STATUSES } from '../../services/taskService';
 
 const initialBoardData = {
     tasks: {},
@@ -54,7 +55,7 @@ const TaskBoard = () => {
     // NÂNG CẤP: assignee (string) -> assignees (array)
     const [taskForm, setTaskForm] = useState({
         content: '', description: '', assignees: [], deadline: '',
-        priority: 'Medium', labels: [], checklists: [], comments: [], coverUrl: ''
+        priority: 'Medium', labels: [], checklists: [], comments: [], coverUrl: '', projectId: '', status: TASK_STATUSES.TODO
     });
 
     const [newChecklistItem, setNewChecklistItem] = useState('');
@@ -150,10 +151,28 @@ const TaskBoard = () => {
         newBoard.columns[destColId].taskIds.unshift(taskId);
         const task = newBoard.tasks[taskId];
         if (destColId === 'col-4' && task.checklists) task.checklists = task.checklists.map(c => ({ ...c, isCompleted: true }));
+        const nextStatus = destColId === 'col-1' ? TASK_STATUSES.TODO : destColId === 'col-2' ? TASK_STATUSES.IN_PROGRESS : destColId === 'col-3' ? TASK_STATUSES.REVIEW : destColId === 'col-4' ? TASK_STATUSES.DONE : TASK_STATUSES.TODO;
+        task.status = nextStatus;
         const systemLog = { id: Date.now(), text: `đã di chuyển thẻ từ "${newBoard.columns[sourceColId].title}" sang "${newBoard.columns[destColId].title}"`, author: currentEmpName, timestamp: new Date().toISOString(), isSystem: true };
         task.comments = task.comments ? [...task.comments, systemLog] : [systemLog];
         setBoardData(newBoard);
         await updateDoc(doc(db, 'boards', 'main-board'), newBoard);
+
+        try {
+            const taskRecord = newBoard.tasks[taskId];
+            await updateTask(taskRecord.id, {
+                title: taskRecord.content,
+                description: taskRecord.description || '',
+                projectId: taskRecord.projectId || '',
+                assignees: taskRecord.assignees || [],
+                assignee: taskRecord.assignee || '',
+                status: nextStatus,
+                priority: taskRecord.priority || TASK_PRIORITIES.MEDIUM,
+                dueDate: taskRecord.deadline || '',
+            });
+        } catch (err) {
+            console.error('Unable to persist task status', err);
+        }
     };
 
     const openNewTaskModal = (colId = 'col-0') => { if (!isManager) return; resetForm(); setTargetColForNewTask(colId); setIsTaskModalOpen(true); };
@@ -192,25 +211,40 @@ const TaskBoard = () => {
 
         if (editingTaskId) {
             newBoard.tasks[editingTaskId] = { ...newBoard.tasks[editingTaskId], ...taskForm };
-            // (Tạm ẩn gửi thông báo nội bộ vì đã có Cloud Function)
+            try {
+                await updateTask(editingTaskId, {
+                    title: taskForm.content,
+                    description: taskForm.description || '',
+                    projectId: taskForm.projectId || '',
+                    assignees: taskForm.assignees || [],
+                    assignee: taskForm.assignees[0] || '',
+                    status: taskForm.status || TASK_STATUSES.TODO,
+                    priority: taskForm.priority || TASK_PRIORITIES.MEDIUM,
+                    dueDate: taskForm.deadline || '',
+                });
+            } catch (err) {
+                console.error('Unable to update task record', err);
+            }
         } else {
             const newTaskId = `task-${Date.now()}`;
             const systemLog = { id: Date.now(), text: `đã tạo thẻ này trong cột "${newBoard.columns[targetColForNewTask].title}"`, author: currentEmpName, timestamp: new Date().toISOString(), isSystem: true };
-            newBoard.tasks[newTaskId] = { id: newTaskId, ...taskForm, comments: [systemLog] };
+            const taskPayload = { id: newTaskId, ...taskForm, comments: [systemLog] };
+            newBoard.tasks[newTaskId] = taskPayload;
             newBoard.columns[targetColForNewTask].taskIds.unshift(newTaskId);
 
             try {
-                await addDoc(collection(db, 'tasks'), {
+                await createTask({
                     title: taskForm.content,
-                    department: "general",
-                    assignees: taskForm.assignees || [], // Truyền mảng người phụ trách lên
-                    deadline: taskForm.deadline || "",
-                    priority: taskForm.priority || "Medium",
-                    boardTaskId: newTaskId,
-                    createdAt: new Date()
+                    description: taskForm.description || '',
+                    projectId: taskForm.projectId || '',
+                    assignees: taskForm.assignees || [],
+                    assignee: taskForm.assignees[0] || '',
+                    status: taskForm.status || TASK_STATUSES.TODO,
+                    priority: taskForm.priority || TASK_PRIORITIES.MEDIUM,
+                    dueDate: taskForm.deadline || '',
                 });
             } catch (err) {
-                console.error("Lỗi kích hoạt Firebase Functions:", err);
+                console.error('Unable to create task record', err);
             }
         }
 
@@ -244,7 +278,7 @@ const TaskBoard = () => {
         await updateDoc(doc(db, 'boards', 'main-board'), newBoard);
     };
 
-    const resetForm = () => { setTaskForm({ content: '', description: '', assignees: [], deadline: '', priority: 'Medium', labels: [], checklists: [], comments: [], coverUrl: '' }); setEditingTaskId(null); setNewChecklistItem(''); setNewComment(''); setTargetColForNewTask('col-0'); };
+    const resetForm = () => { setTaskForm({ content: '', description: '', assignees: [], deadline: '', priority: 'Medium', labels: [], checklists: [], comments: [], coverUrl: '', projectId: '', status: TASK_STATUSES.TODO }); setEditingTaskId(null); setNewChecklistItem(''); setNewComment(''); setTargetColForNewTask('col-0'); };
 
     const toggleLabel = (colorId) => { if (!isManager) return; setTaskForm(prev => { const hasLabel = prev.labels.includes(colorId); return { ...prev, labels: hasLabel ? prev.labels.filter(c => c !== colorId) : [...prev.labels, colorId] }; }); };
     const addChecklistItem = () => { if (!newChecklistItem.trim() || !isManager) return; setTaskForm(prev => ({ ...prev, checklists: [...prev.checklists, { id: Date.now(), text: newChecklistItem, isCompleted: false }] })); setNewChecklistItem(''); };
@@ -285,9 +319,8 @@ const TaskBoard = () => {
     const stats = getAnalytics();
 
     return (
-        <div className="min-h-screen bg-vps-black flex font-sans">
-            <Sidebar />
-            <div className="flex-1 md:ml-64 p-3 pt-16 md:pt-20 md:p-8 overflow-hidden flex flex-col h-[100dvh]">
+        <AppShell title="Task Board" subtitle="Theo dõi công việc và tiến độ nội bộ">
+            <div className="overflow-hidden flex flex-col h-[100dvh]">
                 <div className="mb-4 md:mb-6 flex flex-col xl:flex-row justify-between items-start xl:items-end gap-4 md:gap-6 shrink-0">
                     <div>
                         <h1 className="text-2xl md:text-3xl font-bold text-vps-gold flex items-center gap-2 md:gap-3">
@@ -479,7 +512,7 @@ const TaskBoard = () => {
                                                                 )}
                                                             </div>
 
-                                                            <div className={`flex items-center gap-1 px-1.5 py-1 rounded-md ${isOverdue ? 'bg-red-500/20 text-red-400 font-bold' : isDueSoon ? 'bg-yellow-500/20 text-yellow-400 font-bold' : 'bg-[#111]'}`}>
+                                                            <div className={`flex items-center gap-1 px-1.5 py-1 rounded-md ${isOverdue ? 'bg-red-500/20 text-red-400 font-bold' : isDueSoon ? 'bg-yellow-500/20 text-yellow-400 font-bold' : ' text-gray-400'}`}>
                                                                 <Calendar className="w-3 h-3" />
                                                                 <span>{task.deadline ? new Date(task.deadline).toLocaleDateString('vi-VN').substring(0, 5) : '---'}</span>
                                                             </div>
@@ -695,7 +728,7 @@ const TaskBoard = () => {
                     </div>
                 </div>
             )}
-        </div>
+        </AppShell>
     );
 };
 

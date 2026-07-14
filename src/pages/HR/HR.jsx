@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import Sidebar from '../../components/Sidebar';
+import AppShell from '../../components/AppShell';
 import { useAuth } from '../../contexts/AuthContext';
 import {
     UserPlus,
@@ -311,10 +311,8 @@ const HR = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#0F0F0F] flex w-full max-w-[100vw] overflow-x-hidden relative text-vps-ivory">
-            <Sidebar />
-
-            <div className="flex-1 md:ml-64 p-5 pt-24 md:p-10 md:pt-10 overflow-y-auto w-full">
+        <AppShell title="HR & People" subtitle="Quản lý nhân sự và thông tin nội bộ">
+            <div className="overflow-y-auto w-full">
                 <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-10">
                     <div className="space-y-1">
                         <div className="flex items-center gap-3">
@@ -747,7 +745,7 @@ const HR = () => {
                     </div>
                 )}
             </div>
-        </div>
+        </AppShell>
     );
 };
 

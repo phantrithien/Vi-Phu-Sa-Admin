@@ -13,12 +13,14 @@
     "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@tailwindcss/postcss": "^4.3.2",
     "@vitejs/plugin-react": "^6.0.3",
     "autoprefixer": "^10.5.2",
     "postcss": "^8.5.16",
     "tailwindcss": "^4.3.2",
-    "vite": "^8.1.3"
+    "vite": "^8.1.3",
+    "vitest": "^4.1.10"
   },
   "name": "vi-phu-sa-admin",
   "private": true,
@@ -27,6 +29,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "smoke:mvp": "node --test src/services/__tests__/mvpFeatures.test.js src/services/__tests__/taskService.test.js src/services/__tests__/financeService.test.js src/services/__tests__/fileLinkService.test.js src/services/__tests__/archiveService.test.js && npm run build",
+    "qa:deps": "npm outdated || true && npm audit --audit-level=low || true",
+    "test:rules:unit": "vitest run tests/firestore.rules.test.js",
+    "test:rules": "PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 firebase emulators:exec --only firestore \"npm run test:rules:unit\""
   }
 }

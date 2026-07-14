@@ -1,8 +1,11 @@
 export const APP_ROUTES = {
     ROOT: '/',
     LOGIN: '/login',
+    TASKS: '/tasks',
+    MY_TASKS: '/my-tasks',
     CRM: '/crm',
     PROJECTS: '/projects',
+    SOPS: '/sops',
     PRODUCTION: '/production',
     POST_PRODUCTION: '/post-production',
     ASSETS: '/assets',
@@ -17,6 +20,5 @@ export const APP_ROUTES = {
 export const LEGACY_ROUTE_ALIASES = {
     '/marketing': APP_ROUTES.CRM,
     '/accounting': APP_ROUTES.FINANCE,
-    '/tasks': APP_ROUTES.PROJECTS,
     '/archive': APP_ROUTES.ASSETS,
 };

@@ -1,119 +1,187 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-    LayoutDashboard, Wallet, Users, Megaphone,
-    Clapperboard, CheckSquare, LogOut, Menu, X, Lock
+    LogOut,
+    Menu,
+    X,
+    Lock,
+    ChevronDown,
 } from 'lucide-react';
-import { auth } from '../config/firebase';
+
 import { signOut } from 'firebase/auth';
+import { auth } from '../config/firebase';
+
 import { useAuth } from '../contexts/AuthContext';
+import { ROLE_LABELS, hasRole } from '../constants/roles';
+import { hasAnyPermission } from '../constants/permissions';
+import { MENU_ITEMS, WORKSPACES } from '../constants/menuConfig';
 
 const Sidebar = () => {
     const [isOpen, setIsOpen] = useState(false);
+    const [workspace, setWorkspace] = useState('ceo');
+
     const navigate = useNavigate();
-    const { userRole, currentUser } = useAuth();
+    const { userRole, currentUser, loading } = useAuth();
+
+    const availableWorkspaces = useMemo(() => {
+        return WORKSPACES.filter((item) => hasRole(userRole, item.roles));
+    }, [userRole]);
+
+    const userInitial = useMemo(() => {
+        return currentUser?.email
+            ? currentUser.email.charAt(0).toUpperCase()
+            : 'U';
+    }, [currentUser]);
+
+    const username = useMemo(() => {
+        return currentUser?.email?.split('@')[0] || 'Người dùng';
+    }, [currentUser]);
 
     const handleLogout = async () => {
         try {
             await signOut(auth);
             navigate('/login');
         } catch (error) {
-            console.error("Lỗi đăng xuất:", error);
+            console.error('Lỗi đăng xuất:', error);
         }
     };
 
-    const menuItems = [
-        { path: '/', name: 'Tổng quan', icon: LayoutDashboard, roles: ['executive', 'founder', 'back_office', 'front_office'] },
-        { path: '/accounting', name: 'Hành chính & Kế toán', icon: Wallet, roles: ['founder', 'back_office'] },
-        { path: '/hr', name: 'Nhân sự & Đào tạo', icon: Users, roles: ['founder', 'back_office'] },
-        { path: '/marketing', name: 'Marketing & Sales', icon: Megaphone, roles: ['founder', 'front_office', 'staff', 'back_office'] },
-        { path: '/production', name: 'Sản xuất', icon: Clapperboard, roles: ['founder', 'front_office', 'staff', 'back_office', 'freelancer'] },
-        { path: '/tasks', name: 'TaskBoard', icon: CheckSquare, roles: ['founder', 'back_office', 'front_office', 'staff', 'freelancer'] },
-    ];
+    if (loading) return null;
 
     return (
         <>
-            {/* Nút Mobile */}
-            <button onClick={() => setIsOpen(true)} className="md:hidden fixed top-4 left-4 z-50 p-2 bg-[#1E1E1E]/80 backdrop-blur-md text-vps-gold rounded-xl border border-vps-gray shadow-lg">
-                <Menu className="w-6 h-6" />
+            <button
+                onClick={() => setIsOpen(true)}
+                className="md:hidden fixed top-4 left-4 z-50 p-2 bg-[#1E1E1E]/80 backdrop-blur-md text-vps-gold rounded-xl border border-vps-gray shadow-lg"
+            >
+                <Menu className="w-5 h-5" />
             </button>
 
-            {/* Overlay Mobile */}
-            {isOpen && <div className="md:hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[60]" onClick={() => setIsOpen(false)} />}
+            {isOpen && (
+                <div
+                    onClick={() => setIsOpen(false)}
+                    className="fixed inset-0 bg-black/70 z-40 md:hidden"
+                />
+            )}
 
-            {/* Sidebar */}
-            <div className={`fixed inset-y-0 left-0 z-[70] w-64 bg-[#0A0A0A] border-r border-vps-gray/40 transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-
-                {/* Logo */}
-                <div className="h-24 flex items-center justify-between px-8 border-b border-vps-gray/30">
-                    <div className="flex flex-col">
-                        <h2 className="text-2xl font-serif font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-vps-gold to-yellow-200 tracking-widest drop-shadow-sm">VỊ PHÙ SA</h2>
-                        <span className="text-[10px] text-vps-ivory/40 uppercase tracking-[0.2em] mt-1 font-medium">Administration</span>
+            <aside
+                className={`
+          fixed md:static inset-y-0 left-0 z-50 w-64
+          bg-[#111111] border-r border-vps-gray/40
+          flex flex-col transition-transform duration-300
+          ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+        `}
+            >
+                <div className="p-5 border-b border-vps-gray/30 flex items-center justify-between">
+                    <div>
+                        <h3 className="text-vps-gold font-serif font-bold tracking-widest">
+                            VỊ PHÙ SA
+                        </h3>
+                        <p className="text-[10px] uppercase tracking-[0.25em] text-vps-ivory/40 mt-1">
+                            Internal OS
+                        </p>
                     </div>
-                    <button onClick={() => setIsOpen(false)} className="md:hidden text-gray-500 hover:text-white transition-colors">
-                        <X className="w-6 h-6" />
+
+                    <button
+                        onClick={() => setIsOpen(false)}
+                        className="md:hidden text-vps-ivory/50 hover:text-white"
+                    >
+                        <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                {/* Menu */}
-                <nav className="flex-1 px-4 py-8 space-y-2.5 overflow-y-auto custom-scrollbar">
-                    {menuItems.map((item) => {
-                        const Icon = item.icon;
-                        const superRoles = ['founder', 'executive', 'admin'];
-                        const hasAccess = superRoles.includes(userRole) || item.roles.includes(userRole);
+                <div className="px-4 pt-4">
+                    <label className="text-[10px] uppercase tracking-widest text-vps-ivory/40 mb-2 block">
+                        Workspace
+                    </label>
 
-                        // Hiển thị một thẻ DIV bị vô hiệu hóa, không thể click nếu người dùng không có quyền
-                        if (!hasAccess) {
+                    <div className="relative">
+                        <select
+                            value={workspace}
+                            onChange={(event) => setWorkspace(event.target.value)}
+                            className="w-full appearance-none bg-[#1A1A1A] border border-vps-gray/40 rounded-xl px-3 py-2.5 pr-9 text-sm text-vps-ivory focus:outline-none focus:border-vps-gold"
+                        >
+                            {availableWorkspaces.map((item) => (
+                                <option key={item.key} value={item.key}>
+                                    {item.name}
+                                </option>
+                            ))}
+                        </select>
+
+                        <ChevronDown className="w-4 h-4 text-vps-gold absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                </div>
+
+                <nav className="flex-1 overflow-y-auto px-3 py-5 space-y-1">
+                    {MENU_ITEMS.map((item) => {
+                        const Icon = item.icon;
+
+                        const accessGranted =
+                            hasRole(userRole, item.roles) &&
+                            hasAnyPermission(userRole, item.permissions || []);
+
+                        if (!accessGranted) {
                             return (
                                 <div
                                     key={item.path}
-                                    className="flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 opacity-50 cursor-not-allowed text-vps-ivory/60 border-l-4 border-transparent"
+                                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-vps-ivory/25 cursor-not-allowed"
                                 >
-                                    <Icon className="w-5 h-5" />
-                                    <span className="flex-1 font-medium text-sm tracking-wide">{item.name}</span>
-                                    {/* Lưu ý: Đổi thành <LockIcon /> nếu lỗi vẫn còn sau khi đã cập nhật thư viện */}
-                                    <Lock className="w-4 h-4 text-gray-600" />
+                                    <Lock className="w-4 h-4" />
+                                    <span className="text-sm">{item.name}</span>
                                 </div>
                             );
                         }
 
-                        // Hiển thị NavLink thực sự nếu người dùng CÓ quyền truy cập
                         return (
                             <NavLink
                                 key={item.path}
                                 to={item.path}
                                 onClick={() => setIsOpen(false)}
                                 className={({ isActive }) =>
-                                    `flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 group relative overflow-hidden ${isActive
-                                        ? 'text-vps-gold bg-gradient-to-r from-vps-gold/15 to-transparent border-l-4 border-vps-gold shadow-[inset_0px_0px_20px_rgba(212,175,55,0.05)]'
-                                        : 'text-vps-ivory/60 hover:text-vps-ivory hover:bg-[#1A1A1A] border-l-4 border-transparent'
-                                    }`
+                                    `
+                    flex items-center gap-3 px-4 py-3 rounded-xl
+                    transition-all duration-300 border-l-4
+                    ${isActive
+                                        ? 'text-vps-gold bg-vps-gold/10 border-vps-gold'
+                                        : 'text-vps-ivory/65 hover:text-vps-ivory hover:bg-[#1A1A1A] border-transparent'
+                                    }
+                  `
                                 }
                             >
-                                <Icon className="w-5 h-5 transition-transform duration-300 group-hover:scale-110 group-hover:text-vps-gold" />
-                                <span className="flex-1 font-medium text-sm tracking-wide">{item.name}</span>
+                                <Icon className="w-5 h-5" />
+                                <span className="text-sm font-medium">
+                                    {item.name}
+                                </span>
                             </NavLink>
                         );
                     })}
                 </nav>
 
-                {/* Footer User Profile */}
-                <div className="p-5 border-t border-vps-gray/30 bg-gradient-to-t from-black to-[#0A0A0A]">
-                    <div className="flex items-center gap-3 px-4 py-3 mb-3 rounded-xl bg-[#141414] border border-vps-gray/40 shadow-inner">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-vps-gold to-yellow-600 flex items-center justify-center text-[#111] font-bold shadow-lg shadow-vps-gold/20">
-                            {currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : 'U'}
+                <div className="p-4 border-t border-vps-gray/30">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-full bg-vps-gold text-vps-black flex items-center justify-center font-bold">
+                            {userInitial}
                         </div>
-                        <div className="flex-1 overflow-hidden">
-                            <p className="text-sm text-vps-ivory font-semibold truncate">{currentUser?.email?.split('@')[0]}</p>
-                            <p className="text-[10px] text-vps-gold/80 uppercase font-bold tracking-wider">{userRole}</p>
+
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold text-vps-ivory truncate">
+                                {username}
+                            </p>
+                            <p className="text-xs text-vps-ivory/45">
+                                {ROLE_LABELS[userRole] || 'User'}
+                            </p>
                         </div>
                     </div>
-                    <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-3 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 font-medium text-sm group">
-                        <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                        <span>Đăng xuất hệ thống</span>
+
+                    <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl transition-colors text-sm font-semibold"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        Đăng xuất
                     </button>
                 </div>
-            </div>
+            </aside>
         </>
     );
 };

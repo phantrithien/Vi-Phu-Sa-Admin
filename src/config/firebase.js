@@ -4,7 +4,7 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getMessaging } from 'firebase/messaging';
 
-const env = import.meta.env;
+const env = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : {};
 
 const firebaseConfig = {
     apiKey: env.VITE_FIREBASE_API_KEY || '',
@@ -30,14 +30,27 @@ if (missingEnvKeys.length > 0) {
     console.warn(`[firebase] Missing environment variables: ${missingEnvKeys.join(', ')}`);
 }
 
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-export const messaging = getMessaging(app);
+let app;
+let auth;
+let db;
+let storage;
+let messaging;
+let secondaryAuth;
 
-const secondaryApp = initializeApp(firebaseConfig, 'SecondaryApp');
-export const secondaryAuth = getAuth(secondaryApp);
+try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+    messaging = getMessaging(app);
+
+    const secondaryApp = initializeApp(firebaseConfig, 'SecondaryApp');
+    secondaryAuth = getAuth(secondaryApp);
+} catch (error) {
+    console.warn('[firebase] Unable to initialize Firebase SDK:', error.message || error);
+}
+
+export { app, auth, db, storage, messaging, secondaryAuth };
 
 export const isFirebaseConfigured = missingEnvKeys.length === 0;
 export const firebaseConfigValues = firebaseConfig;

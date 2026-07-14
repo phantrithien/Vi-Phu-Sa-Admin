@@ -1,0 +1,177 @@
+{
+    "sops": [
+        {
+            "code": "SOP-001",
+            "title": "Tiep nhan brief khach hang",
+            "category": "operations",
+            "status": "active",
+            "summary": "Thu thap thong tin dau vao va scope du an",
+            "steps": [
+                {
+                    "title": "Nhan brief va tai lieu tham chieu"
+                },
+                {
+                    "title": "Xac nhan scope va KPI"
+                },
+                {
+                    "title": "Chot timeline muc tieu"
+                }
+            ]
+        },
+        {
+            "code": "SOP-002",
+            "title": "Tien ky video production",
+            "category": "operations",
+            "status": "active",
+            "summary": "Len ke hoach tien ky truoc ngay quay",
+            "steps": [
+                {
+                    "title": "Len y tuong va treatment"
+                },
+                {
+                    "title": "Viet script va storyboard"
+                },
+                {
+                    "title": "Khao sat boi canh"
+                },
+                {
+                    "title": "Chot crew va call time"
+                }
+            ]
+        },
+        {
+            "code": "SOP-003",
+            "title": "Checklist ngay quay",
+            "category": "operations",
+            "status": "active",
+            "summary": "Van hanh tai hien truong quay",
+            "steps": [
+                {
+                    "title": "Check gear theo danh sach"
+                },
+                {
+                    "title": "Brief crew truoc gio quay"
+                },
+                {
+                    "title": "Chay shot list"
+                },
+                {
+                    "title": "Backup du lieu tai set"
+                }
+            ]
+        },
+        {
+            "code": "SOP-004",
+            "title": "Hau ky va duyet noi bo",
+            "category": "operations",
+            "status": "active",
+            "summary": "Quy trinh dung post-production",
+            "steps": [
+                {
+                    "title": "Ingest va organize footage"
+                },
+                {
+                    "title": "Dung rough cut"
+                },
+                {
+                    "title": "Duyet noi bo v1"
+                },
+                {
+                    "title": "Hoan thien final cut"
+                }
+            ]
+        },
+        {
+            "code": "SOP-005",
+            "title": "Luu tru va ban giao file",
+            "category": "operations",
+            "status": "active",
+            "summary": "Dong du an va ban giao",
+            "steps": [
+                {
+                    "title": "Export final package"
+                },
+                {
+                    "title": "Upload cloud links"
+                },
+                {
+                    "title": "Luu archive noi bo"
+                },
+                {
+                    "title": "Tong ket lessons learned"
+                }
+            ]
+        }
+    ],
+    "projects": [
+        {
+            "code": "VPS-2026-001",
+            "title": "Event Launching Demo",
+            "client": "Demo Client A",
+            "producer": "Producer A",
+            "status": "in_progress",
+            "priority": "high",
+            "sopCodes": [
+                "SOP-001",
+                "SOP-003"
+            ],
+            "tasks": 8,
+            "expenses": [
+                20000000,
+                12000000
+            ],
+            "invoice": 55000000,
+            "fileLinks": [
+                "https://drive.google.com/",
+                "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+            ],
+            "archiveDemo": true
+        },
+        {
+            "code": "VPS-2026-002",
+            "title": "Video Brand Story Demo",
+            "client": "Demo Client B",
+            "producer": "Producer B",
+            "status": "planning",
+            "priority": "medium",
+            "sopCodes": [
+                "SOP-002",
+                "SOP-004"
+            ],
+            "tasks": 6,
+            "expenses": [
+                9000000,
+                7000000
+            ],
+            "invoice": 32000000,
+            "fileLinks": [
+                "https://onedrive.live.com/",
+                "https://drive.google.com/"
+            ],
+            "archiveDemo": false
+        },
+        {
+            "code": "VPS-2026-003",
+            "title": "Social Content Package Demo",
+            "client": "Demo Client C",
+            "producer": "Producer C",
+            "status": "review",
+            "priority": "medium",
+            "sopCodes": [
+                "SOP-001",
+                "SOP-005"
+            ],
+            "tasks": 7,
+            "expenses": [
+                5000000,
+                3500000
+            ],
+            "invoice": 18000000,
+            "fileLinks": [
+                "https://www.youtube.com/",
+                "https://drive.google.com/"
+            ],
+            "archiveDemo": true
+        }
+    ]
+}
