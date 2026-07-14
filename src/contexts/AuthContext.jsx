@@ -3,6 +3,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { getToken } from 'firebase/messaging';
 import { auth, db, messaging } from '../config/firebase';
+import { ROLES } from '../constants/roles';
 
 const AuthContext = createContext(null);
 
@@ -33,7 +34,7 @@ export const AuthProvider = ({ children }) => {
                 const userRef = doc(db, 'users', user.uid);
                 const userSnap = await getDoc(userRef);
 
-                let role = 'staff';
+                let role = ROLES.STAFF;
                 let department = null;
                 let data = {
                     email: user.email,
