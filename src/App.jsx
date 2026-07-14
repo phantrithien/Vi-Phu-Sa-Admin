@@ -4,7 +4,7 @@ import { useAuth } from './contexts/AuthContext';
 
 import PermissionGuard from './components/PermissionGuard';
 import { PERMISSIONS } from './constants/permissions';
-import { APP_ROUTES, LEGACY_ROUTE_ALIASES } from './constants/routes';
+import { APP_ROUTES } from './constants/routes';
 
 const Login = lazy(() => import('./pages/Login/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard/Dashboard'));
@@ -40,119 +40,56 @@ const Guarded = ({ permissions, children }) => (
     </ProtectedRoute>
 );
 
+const AuthRedirect = ({ children }) => {
+    const { currentUser, loading } = useAuth();
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#0F0F0F] text-vps-gold">
+                Đang tải hệ thống...
+            </div>
+        );
+    }
+
+    if (currentUser) {
+        return <Navigate to={APP_ROUTES.ROOT} replace />;
+    }
+
+    return children;
+};
+
 const App = () => {
     return (
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#0F0F0F] text-vps-gold">Đang tải trang...</div>}>
             <Routes>
-                <Route path="/login" element={<Login />} />
+                <Route path="/login" element={<AuthRedirect><Login /></AuthRedirect>} />
 
-                <Route
-                    path={APP_ROUTES.ROOT}
-                    element={
-                        <Guarded permissions={[PERMISSIONS.VIEW_COMMAND_CENTER]}>
-                            <Dashboard />
-                        </Guarded>
-                    }
-                />
+                <Route path="/app" element={<ProtectedRoute><Navigate to={APP_ROUTES.ROOT} replace /></ProtectedRoute>} />
+                <Route path="/app/dashboard" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_COMMAND_CENTER]}><Dashboard /></Guarded></ProtectedRoute>} />
+                <Route path="/app/crm" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_CRM]}><Marketing /></Guarded></ProtectedRoute>} />
+                <Route path="/app/projects" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_PROJECTS]}><TaskBoard /></Guarded></ProtectedRoute>} />
+                <Route path="/app/production" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_PRODUCTION]}><Production /></Guarded></ProtectedRoute>} />
+                <Route path="/app/post-production" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_POST_PRODUCTION]}><ComingSoon title="Post-production Workspace" /></Guarded></ProtectedRoute>} />
+                <Route path="/app/assets" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_ASSETS]}><Archive /></Guarded></ProtectedRoute>} />
+                <Route path="/app/finance" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_FINANCE]}><Accounting /></Guarded></ProtectedRoute>} />
+                <Route path="/app/hr" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_HR]}><HR /></Guarded></ProtectedRoute>} />
+                <Route path="/app/equipment" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_EQUIPMENT]}><ComingSoon title="Equipment Booking" /></Guarded></ProtectedRoute>} />
+                <Route path="/app/knowledge-base" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_KNOWLEDGE]}><ComingSoon title="Knowledge Base" /></Guarded></ProtectedRoute>} />
+                <Route path="/app/reports" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_REPORTS]}><ComingSoon title="Reports & BI" /></Guarded></ProtectedRoute>} />
+                <Route path="/app/settings" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_SETTINGS]}><ComingSoon title="Settings & Governance" /></Guarded></ProtectedRoute>} />
 
-                <Route
-                    path={APP_ROUTES.CRM}
-                    element={
-                        <Guarded permissions={[PERMISSIONS.VIEW_CRM]}>
-                            <Marketing />
-                        </Guarded>
-                    }
-                />
-
-                <Route
-                    path={APP_ROUTES.PROJECTS}
-                    element={
-                        <Guarded permissions={[PERMISSIONS.VIEW_PROJECTS]}>
-                            <TaskBoard />
-                        </Guarded>
-                    }
-                />
-
-                <Route
-                    path={APP_ROUTES.PRODUCTION}
-                    element={
-                        <Guarded permissions={[PERMISSIONS.VIEW_PRODUCTION]}>
-                            <Production />
-                        </Guarded>
-                    }
-                />
-
-                <Route
-                    path={APP_ROUTES.POST_PRODUCTION}
-                    element={
-                        <Guarded permissions={[PERMISSIONS.VIEW_POST_PRODUCTION]}>
-                            <ComingSoon title="Post-production Workspace" />
-                        </Guarded>
-                    }
-                />
-
-                <Route
-                    path={APP_ROUTES.ASSETS}
-                    element={
-                        <Guarded permissions={[PERMISSIONS.VIEW_ASSETS]}>
-                            <Archive />
-                        </Guarded>
-                    }
-                />
-
-                <Route
-                    path={APP_ROUTES.FINANCE}
-                    element={
-                        <Guarded permissions={[PERMISSIONS.VIEW_FINANCE]}>
-                            <Accounting />
-                        </Guarded>
-                    }
-                />
-
-                <Route
-                    path={APP_ROUTES.HR}
-                    element={
-                        <Guarded permissions={[PERMISSIONS.VIEW_HR]}>
-                            <HR />
-                        </Guarded>
-                    }
-                />
-
-                <Route
-                    path={APP_ROUTES.EQUIPMENT}
-                    element={
-                        <Guarded permissions={[PERMISSIONS.VIEW_EQUIPMENT]}>
-                            <ComingSoon title="Equipment Booking" />
-                        </Guarded>
-                    }
-                />
-
-                <Route
-                    path={APP_ROUTES.KNOWLEDGE_BASE}
-                    element={
-                        <Guarded permissions={[PERMISSIONS.VIEW_KNOWLEDGE]}>
-                            <ComingSoon title="Knowledge Base" />
-                        </Guarded>
-                    }
-                />
-
-                <Route
-                    path={APP_ROUTES.REPORTS}
-                    element={
-                        <Guarded permissions={[PERMISSIONS.VIEW_REPORTS]}>
-                            <ComingSoon title="Reports & BI" />
-                        </Guarded>
-                    }
-                />
-
-                <Route
-                    path={APP_ROUTES.SETTINGS}
-                    element={
-                        <Guarded permissions={[PERMISSIONS.VIEW_SETTINGS]}>
-                            <ComingSoon title="Settings & Governance" />
-                        </Guarded>
-                    }
-                />
+                <Route path={APP_ROUTES.ROOT} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_COMMAND_CENTER]}><Dashboard /></Guarded></ProtectedRoute>} />
+                <Route path={APP_ROUTES.CRM} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_CRM]}><Marketing /></Guarded></ProtectedRoute>} />
+                <Route path={APP_ROUTES.PROJECTS} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_PROJECTS]}><TaskBoard /></Guarded></ProtectedRoute>} />
+                <Route path={APP_ROUTES.PRODUCTION} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_PRODUCTION]}><Production /></Guarded></ProtectedRoute>} />
+                <Route path={APP_ROUTES.POST_PRODUCTION} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_POST_PRODUCTION]}><ComingSoon title="Post-production Workspace" /></Guarded></ProtectedRoute>} />
+                <Route path={APP_ROUTES.ASSETS} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_ASSETS]}><Archive /></Guarded></ProtectedRoute>} />
+                <Route path={APP_ROUTES.FINANCE} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_FINANCE]}><Accounting /></Guarded></ProtectedRoute>} />
+                <Route path={APP_ROUTES.HR} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_HR]}><HR /></Guarded></ProtectedRoute>} />
+                <Route path={APP_ROUTES.EQUIPMENT} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_EQUIPMENT]}><ComingSoon title="Equipment Booking" /></Guarded></ProtectedRoute>} />
+                <Route path={APP_ROUTES.KNOWLEDGE_BASE} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_KNOWLEDGE]}><ComingSoon title="Knowledge Base" /></Guarded></ProtectedRoute>} />
+                <Route path={APP_ROUTES.REPORTS} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_REPORTS]}><ComingSoon title="Reports & BI" /></Guarded></ProtectedRoute>} />
+                <Route path={APP_ROUTES.SETTINGS} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_SETTINGS]}><ComingSoon title="Settings & Governance" /></Guarded></ProtectedRoute>} />
 
                 {/* Route cũ giữ tương thích */}
                 <Route path="/marketing" element={<Navigate to={APP_ROUTES.CRM} replace />} />
