@@ -22,13 +22,25 @@ export const buildProjectCode = (year = new Date().getFullYear().toString(), ind
     return `PRJ-${year}-${normalized}`;
 };
 
+export const normalizeProjectClient = (data = {}) => {
+    const clientId = String(data.clientId || '').trim();
+    const clientName = String(data.clientName || data.client || '').trim();
+
+    return {
+        clientId,
+        clientName,
+        client: clientName,
+    };
+};
+
 export const validateProjectData = (data = {}) => {
     const errors = [];
 
     if (!data.title || String(data.title).trim().length < 3) {
         errors.push('title');
     }
-    if (!data.client || String(data.client).trim().length < 2) {
+    const normalizedClient = normalizeProjectClient(data);
+    if (!normalizedClient.clientId && normalizedClient.clientName.length < 2) {
         errors.push('client');
     }
     if (!data.producer || String(data.producer).trim().length < 2) {
@@ -59,7 +71,8 @@ export const getProjectById = async (id) => {
 };
 
 export const createProject = async (payload) => {
-    const validation = validateProjectData(payload);
+    const normalizedClient = normalizeProjectClient(payload);
+    const validation = validateProjectData({ ...payload, ...normalizedClient });
     if (!validation.isValid) {
         throw new Error(`Invalid project payload: ${validation.errors.join(', ')}`);
     }
@@ -68,6 +81,7 @@ export const createProject = async (payload) => {
     const projectCode = payload.code || buildProjectCode(new Date().getFullYear().toString(), Math.floor(Math.random() * 900) + 1);
     const ref = await addDoc(collection(db, PROJECT_COLLECTION), {
         ...payload,
+        ...normalizedClient,
         code: projectCode,
         createdAt: now,
         updatedAt: now,
@@ -76,13 +90,15 @@ export const createProject = async (payload) => {
 };
 
 export const updateProject = async (id, payload) => {
-    const validation = validateProjectData(payload);
+    const normalizedClient = normalizeProjectClient(payload);
+    const validation = validateProjectData({ ...payload, ...normalizedClient });
     if (!validation.isValid) {
         throw new Error(`Invalid project payload: ${validation.errors.join(', ')}`);
     }
 
     await updateDoc(doc(db, PROJECT_COLLECTION, id), {
         ...payload,
+        ...normalizedClient,
         updatedAt: Date.now(),
     });
 };

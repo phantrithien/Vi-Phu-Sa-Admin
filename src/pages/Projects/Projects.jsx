@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BriefcaseBusiness, CalendarDays, Building2, Plus, Search, Sparkles, UserRound, FileText, CheckSquare } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 import AppShell from '../../components/AppShell';
 import EmptyState from '../../components/ui/EmptyState';
@@ -25,9 +26,15 @@ import { createTask, listTasks, TASK_PRIORITIES, TASK_STATUSES, updateTask } fro
 import { getProjectFinanceSummary } from '../../services/financeService';
 import { createFileLink, listFileLinks } from '../../services/fileLinkService';
 import { createArchiveFromProject } from '../../services/archiveService';
+import { listClients } from '../../modules/clients/clientService';
+import ProjectProductionTab from '../../modules/projects/tabs/ProjectProductionTab';
+import ProjectCrewTab from '../../modules/projects/tabs/ProjectCrewTab';
+import ProjectEquipmentTab from '../../modules/projects/tabs/ProjectEquipmentTab';
 
 const initialForm = {
     title: '',
+    clientId: '',
+    clientName: '',
     client: '',
     producer: '',
     status: PROJECT_STATUSES.PLANNING,
@@ -67,6 +74,7 @@ const statusVariant = {
 };
 
 const Projects = () => {
+    const navigate = useNavigate();
     const { userRole } = useAuth();
     const { pushToast } = useToast();
     const [projects, setProjects] = useState([]);
@@ -81,6 +89,7 @@ const Projects = () => {
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState(initialForm);
     const [sops, setSops] = useState([]);
+    const [clients, setClients] = useState([]);
     const [checklists, setChecklists] = useState({});
     const [projectTasks, setProjectTasks] = useState({});
     const [financeByProject, setFinanceByProject] = useState({});
@@ -108,13 +117,14 @@ const Projects = () => {
     useEffect(() => {
         loadProjects();
         listSops().then((rows) => setSops(rows)).catch(() => setSops([]));
+        listClients().then((rows) => setClients(rows)).catch(() => setClients([]));
     }, []);
 
     const filteredProjects = useMemo(() => {
         const term = search.trim().toLowerCase();
 
         return projects.filter((item) => {
-            const haystack = [item.title, item.client, item.producer, item.code, item.summary]
+            const haystack = [item.title, item.client, item.clientName, item.producer, item.code, item.summary]
                 .filter(Boolean)
                 .join(' ')
                 .toLowerCase();
@@ -263,7 +273,7 @@ const Projects = () => {
     };
 
     const handleCreateArchive = async (project) => {
-        if (!window.confirm(`Ban chac chan muon archive project "${project.title}"?`)) {
+        if (!window.confirm(`Bạn chắc chắn muốn lưu trữ dự án "${project.title}"?`)) {
             return;
         }
 
@@ -272,7 +282,7 @@ const Projects = () => {
             const finance = financeByProject[project.id] || { revenue: 0, cost: 0, profit: 0 };
             const links = fileLinksByProject[project.id] || [];
             await createArchiveFromProject(project, finance, links);
-            pushToast('Da tao archive tu project.', 'success');
+            pushToast('Đã tạo bản lưu trữ từ dự án.', 'success');
         } catch (err) {
             setError(err.message || 'Không thể tạo archive từ project.');
             pushToast(err.message || 'Không thể tạo archive từ project.', 'error');
@@ -323,6 +333,8 @@ const Projects = () => {
         setEditingId(project.id);
         setForm({
             title: project.title || '',
+            clientId: project.clientId || '',
+            clientName: project.clientName || project.client || '',
             client: project.client || '',
             producer: project.producer || '',
             status: project.status || PROJECT_STATUSES.PLANNING,
@@ -343,24 +355,30 @@ const Projects = () => {
             const payload = {
                 ...form,
                 title: form.title.trim(),
-                client: form.client.trim(),
                 producer: form.producer.trim(),
                 summary: form.summary.trim(),
                 sopId: form.sopId || '',
                 checklist: editingId ? (projects.find((item) => item.id === editingId)?.checklist || []) : [],
             };
 
-            if (!payload.title || !payload.client || !payload.producer) {
+            const selectedClient = clients.find((item) => item.id === payload.clientId);
+            const fallbackClientName = String(payload.clientName || payload.client || '').trim();
+
+            payload.clientId = selectedClient ? selectedClient.id : '';
+            payload.clientName = selectedClient ? selectedClient.name : fallbackClientName;
+            payload.client = payload.clientName;
+
+            if (!payload.title || !payload.clientName || !payload.producer) {
                 setError('Vui lòng điền đầy đủ tiêu đề, khách hàng và producer.');
                 return;
             }
 
             if (editingId) {
                 await updateProject(editingId, payload);
-                pushToast('Cap nhat project thanh cong.', 'success');
+                pushToast('Cập nhật dự án thành công.', 'success');
             } else {
                 await createProject(payload);
-                pushToast('Tao project thanh cong.', 'success');
+                pushToast('Tạo dự án thành công.', 'success');
             }
 
             await loadProjects();
@@ -465,7 +483,16 @@ const Projects = () => {
                                     <div className="mt-5 grid gap-3 text-sm text-vps-ivory/70 sm:grid-cols-2">
                                         <div className="flex items-center gap-2">
                                             <Building2 className="h-4 w-4 text-vps-gold" />
-                                            <span>{project.client}</span>
+                                            {project.clientId ? (
+                                                <button
+                                                    onClick={() => navigate(`/app/clients/${project.clientId}`)}
+                                                    className="text-left text-vps-gold underline"
+                                                >
+                                                    {project.client || project.clientName}
+                                                </button>
+                                            ) : (
+                                                <span>{project.client || project.clientName}</span>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <UserRound className="h-4 w-4 text-vps-gold" />
@@ -513,13 +540,13 @@ const Projects = () => {
                                     </div>
 
                                     <div className="flex flex-wrap gap-2">
-                                        {['overview', 'budget', 'tasks', 'checklist', 'files', 'archive', 'notes'].map((tab) => (
+                                        {['overview', 'budget', 'tasks', 'production', 'crew', 'equipment', 'checklist', 'files', 'archive', 'notes'].map((tab) => (
                                             <button
                                                 key={tab}
                                                 onClick={() => setDetailTab(tab)}
                                                 className={`rounded-full px-3 py-1.5 text-sm transition-colors ${detailTab === tab ? 'bg-vps-gold text-vps-black' : 'bg-[#222222] text-vps-ivory/70'}`}
                                             >
-                                                {tab === 'overview' ? 'Tổng quan' : tab === 'budget' ? 'Budget' : tab === 'tasks' ? 'Tasks' : tab === 'checklist' ? 'Checklist' : tab === 'files' ? 'File Links' : tab === 'archive' ? 'Archive' : 'Ghi chú'}
+                                                {tab === 'overview' ? 'Tổng quan' : tab === 'budget' ? 'Budget' : tab === 'tasks' ? 'Tasks' : tab === 'production' ? 'Production' : tab === 'crew' ? 'Crew' : tab === 'equipment' ? 'Equipment' : tab === 'checklist' ? 'Checklist' : tab === 'files' ? 'File Links' : tab === 'archive' ? 'Archive' : 'Ghi chú'}
                                             </button>
                                         ))}
                                     </div>
@@ -531,7 +558,16 @@ const Projects = () => {
                                             <div className="space-y-3 text-sm text-vps-ivory/70">
                                                 <div className="flex items-center justify-between rounded-xl border border-vps-gray/20 bg-[#181818] px-3 py-2">
                                                     <span>Khách hàng</span>
-                                                    <span className="font-semibold text-vps-ivory">{activeProject.client}</span>
+                                                    {activeProject.clientId ? (
+                                                        <button
+                                                            onClick={() => navigate(`/app/clients/${activeProject.clientId}`)}
+                                                            className="font-semibold text-vps-gold underline"
+                                                        >
+                                                            {activeProject.client || activeProject.clientName}
+                                                        </button>
+                                                    ) : (
+                                                        <span className="font-semibold text-vps-ivory">{activeProject.client || activeProject.clientName}</span>
+                                                    )}
                                                 </div>
                                                 <div className="flex items-center justify-between rounded-xl border border-vps-gray/20 bg-[#181818] px-3 py-2">
                                                     <span>Producer</span>
@@ -551,14 +587,14 @@ const Projects = () => {
                                             <div className="space-y-4">
                                                 <div className="rounded-2xl border border-vps-gray/20 bg-[#181818] p-4 text-sm text-vps-ivory/70">
                                                     <p className="font-semibold text-vps-ivory">Archive project</p>
-                                                    <p className="mt-2">Tao ban luu tru snapshot cua project kem budget va file links hien tai.</p>
+                                                    <p className="mt-2">Tạo bản lưu trữ của dự án kèm ngân sách và file link hiện tại.</p>
                                                     <div className="mt-4 flex justify-end">
                                                         <button
                                                             onClick={() => handleCreateArchive(activeProject)}
                                                             disabled={archiveBusy}
                                                             className="rounded-lg border border-vps-gray/20 bg-[#111111] px-3 py-2 text-sm text-vps-ivory disabled:cursor-not-allowed disabled:opacity-60"
                                                         >
-                                                            {archiveBusy ? 'Dang tao archive...' : 'Tao archive tu project'}
+                                                            {archiveBusy ? 'Đang tạo bản lưu trữ...' : 'Tạo bản lưu trữ từ dự án'}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -582,6 +618,12 @@ const Projects = () => {
                                                 </div>
                                             </div>
                                         )}
+
+                                        {detailTab === 'production' && <ProjectProductionTab project={activeProject} />}
+
+                                        {detailTab === 'crew' && <ProjectCrewTab project={activeProject} />}
+
+                                        {detailTab === 'equipment' && <ProjectEquipmentTab project={activeProject} />}
 
                                         {detailTab === 'checklist' && (
                                             <div className="space-y-4">
@@ -774,8 +816,35 @@ const Projects = () => {
                                     <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required className="w-full rounded-xl border border-vps-gray/20 bg-[#111111] px-3 py-2.5 text-sm text-vps-ivory outline-none focus:border-vps-gold" />
                                 </div>
                                 <div>
-                                    <label className="mb-2 block text-sm text-vps-ivory/70">Khách hàng</label>
-                                    <input value={form.client} onChange={(event) => setForm({ ...form, client: event.target.value })} required className="w-full rounded-xl border border-vps-gray/20 bg-[#111111] px-3 py-2.5 text-sm text-vps-ivory outline-none focus:border-vps-gold" />
+                                    <label className="mb-2 block text-sm text-vps-ivory/70">Chọn khách hàng</label>
+                                    <select
+                                        value={form.clientId}
+                                        onChange={(event) => {
+                                            const nextClientId = event.target.value;
+                                            const selected = clients.find((item) => item.id === nextClientId);
+                                            setForm({
+                                                ...form,
+                                                clientId: nextClientId,
+                                                clientName: selected ? selected.name : form.clientName,
+                                                client: selected ? selected.name : form.client,
+                                            });
+                                        }}
+                                        className="w-full rounded-xl border border-vps-gray/20 bg-[#111111] px-3 py-2.5 text-sm text-vps-ivory outline-none focus:border-vps-gold"
+                                    >
+                                        <option value="">Nhập tay tên khách hàng</option>
+                                        {clients.map((client) => (
+                                            <option key={client.id} value={client.id}>{client.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="mb-2 block text-sm text-vps-ivory/70">Tên khách hàng (fallback)</label>
+                                    <input
+                                        value={form.clientName}
+                                        onChange={(event) => setForm({ ...form, clientName: event.target.value, client: event.target.value })}
+                                        required
+                                        className="w-full rounded-xl border border-vps-gray/20 bg-[#111111] px-3 py-2.5 text-sm text-vps-ivory outline-none focus:border-vps-gold"
+                                    />
                                 </div>
                                 <div>
                                     <label className="mb-2 block text-sm text-vps-ivory/70">Producer</label>

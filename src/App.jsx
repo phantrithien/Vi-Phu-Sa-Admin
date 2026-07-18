@@ -9,8 +9,13 @@ import { APP_ROUTES } from './constants/routes';
 const Login = lazy(() => import('./pages/Login/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard/Dashboard'));
 const Marketing = lazy(() => import('./pages/Marketing/Marketing'));
+const ClientListPage = lazy(() => import('./modules/clients/pages/ClientListPage'));
+const ClientDetailPage = lazy(() => import('./modules/clients/pages/ClientDetailPage'));
 const Accounting = lazy(() => import('./pages/Accounting/Accounting'));
-const Production = lazy(() => import('./pages/Production/Production'));
+const ProductionCalendarPage = lazy(() => import('./modules/production/pages/ProductionCalendarPage'));
+const CallSheetDetailPage = lazy(() => import('./modules/production/pages/CallSheetDetailPage'));
+const CrewListPage = lazy(() => import('./modules/crew/pages/CrewListPage'));
+const CrewDetailPage = lazy(() => import('./modules/crew/pages/CrewDetailPage'));
 const HR = lazy(() => import('./pages/HR/HR'));
 const TaskBoard = lazy(() => import('./pages/TaskBoard/TaskBoard'));
 const Projects = lazy(() => import('./pages/Projects/Projects'));
@@ -71,9 +76,14 @@ const App = () => {
                 <Route path="/app" element={<ProtectedRoute><Navigate to={APP_ROUTES.ROOT} replace /></ProtectedRoute>} />
                 <Route path="/app/dashboard" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_COMMAND_CENTER]}><Dashboard /></Guarded></ProtectedRoute>} />
                 <Route path="/app/crm" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_CRM]}><Marketing /></Guarded></ProtectedRoute>} />
+                <Route path="/app/clients" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.CLIENT_READ]}><ClientListPage /></Guarded></ProtectedRoute>} />
+                <Route path="/app/clients/:clientId" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.CLIENT_READ]}><ClientDetailPage /></Guarded></ProtectedRoute>} />
                 <Route path="/app/projects" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_PROJECTS]}><Projects /></Guarded></ProtectedRoute>} />
                 <Route path="/app/sops" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.SOP]}><SOP /></Guarded></ProtectedRoute>} />
-                <Route path="/app/production" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_PRODUCTION]}><Production /></Guarded></ProtectedRoute>} />
+                <Route path="/app/production" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.PRODUCTION_READ]}><ProductionCalendarPage /></Guarded></ProtectedRoute>} />
+                <Route path="/app/production/call-sheets/:productionDayId" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.PRODUCTION_READ]}><CallSheetDetailPage /></Guarded></ProtectedRoute>} />
+                <Route path="/app/crew" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.CREW_READ]}><CrewListPage /></Guarded></ProtectedRoute>} />
+                <Route path="/app/crew/:crewId" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.CREW_READ]}><CrewDetailPage /></Guarded></ProtectedRoute>} />
                 <Route path="/app/tasks" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_TASKS]}><TaskBoard /></Guarded></ProtectedRoute>} />
                 <Route path="/app/my-tasks" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_TASKS]}><MyTasks /></Guarded></ProtectedRoute>} />
                 <Route path="/app/post-production" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_POST_PRODUCTION]}><ComingSoon title="Post-production Workspace" /></Guarded></ProtectedRoute>} />
@@ -87,9 +97,11 @@ const App = () => {
 
                 <Route path={APP_ROUTES.ROOT} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_COMMAND_CENTER]}><Dashboard /></Guarded></ProtectedRoute>} />
                 <Route path={APP_ROUTES.CRM} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_CRM]}><Marketing /></Guarded></ProtectedRoute>} />
+                <Route path={APP_ROUTES.CLIENTS} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.CLIENT_READ]}><ClientListPage /></Guarded></ProtectedRoute>} />
                 <Route path={APP_ROUTES.PROJECTS} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_PROJECTS]}><Projects /></Guarded></ProtectedRoute>} />
                 <Route path={APP_ROUTES.SOPS} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.SOP]}><SOP /></Guarded></ProtectedRoute>} />
-                <Route path={APP_ROUTES.PRODUCTION} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_PRODUCTION]}><Production /></Guarded></ProtectedRoute>} />
+                <Route path={APP_ROUTES.PRODUCTION} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.PRODUCTION_READ]}><ProductionCalendarPage /></Guarded></ProtectedRoute>} />
+                <Route path={APP_ROUTES.CREW} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.CREW_READ]}><CrewListPage /></Guarded></ProtectedRoute>} />
                 <Route path="/tasks" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_TASKS]}><TaskBoard /></Guarded></ProtectedRoute>} />
                 <Route path="/my-tasks" element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_TASKS]}><MyTasks /></Guarded></ProtectedRoute>} />
                 <Route path={APP_ROUTES.POST_PRODUCTION} element={<ProtectedRoute><Guarded permissions={[PERMISSIONS.VIEW_POST_PRODUCTION]}><ComingSoon title="Post-production Workspace" /></Guarded></ProtectedRoute>} />

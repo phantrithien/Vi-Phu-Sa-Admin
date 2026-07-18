@@ -11,12 +11,17 @@ import { PERMISSIONS } from '../../constants/permissions';
 import { hasAnyPermission } from '../../constants/permissions';
 import { SOP_CATEGORIES, SOP_STATUSES, createSop, listSops, updateSop, archiveSop, duplicateSop } from '../../services/sopService';
 
+const createStep = (step = {}) => ({
+    id: step.id || `step-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    title: step.title || '',
+});
+
 const initialForm = {
     title: '',
     category: SOP_CATEGORIES.OPERATIONS,
     status: SOP_STATUSES.ACTIVE,
     summary: '',
-    steps: [{ title: '' }],
+    steps: [createStep()],
 };
 
 const categoryLabels = {
@@ -96,26 +101,33 @@ const SOP = () => {
             category: sop.category || SOP_CATEGORIES.OPERATIONS,
             status: sop.status || SOP_STATUSES.ACTIVE,
             summary: sop.summary || '',
-            steps: Array.isArray(sop.steps) && sop.steps.length > 0 ? sop.steps : [{ title: '' }],
+            steps: Array.isArray(sop.steps) && sop.steps.length > 0
+                ? sop.steps.map((step) => createStep(step))
+                : [createStep()],
         });
         setError('');
         setIsModalOpen(true);
     };
 
     const updateStep = (index, value) => {
-        const nextSteps = [...form.steps];
-        nextSteps[index] = { ...nextSteps[index], title: value };
-        setForm({ ...form, steps: nextSteps });
+        setForm((current) => ({
+            ...current,
+            steps: current.steps.map((step, itemIndex) => (
+                itemIndex === index ? { ...step, title: value } : step
+            )),
+        }));
     };
 
     const addStep = () => {
-        setForm({ ...form, steps: [...form.steps, { title: '' }] });
+        setForm((current) => ({ ...current, steps: [...current.steps, createStep()] }));
     };
 
     const removeStep = (index) => {
         if (form.steps.length === 1) return;
-        const nextSteps = form.steps.filter((_, itemIndex) => itemIndex !== index);
-        setForm({ ...form, steps: nextSteps });
+        setForm((current) => ({
+            ...current,
+            steps: current.steps.filter((_, itemIndex) => itemIndex !== index),
+        }));
     };
 
     const handleSubmit = async (event) => {
@@ -138,10 +150,10 @@ const SOP = () => {
 
             if (editingId) {
                 await updateSop(editingId, payload);
-                pushToast('Cap nhat SOP thanh cong.', 'success');
+                pushToast('Cập nhật SOP thành công.', 'success');
             } else {
                 await createSop(payload);
-                pushToast('Tao SOP thanh cong.', 'success');
+                pushToast('Tạo SOP thành công.', 'success');
             }
 
             await loadSops();
@@ -153,14 +165,14 @@ const SOP = () => {
     };
 
     const handleArchive = async (id) => {
-        if (!window.confirm('Ban chac chan muon luu tru SOP nay?')) {
+        if (!window.confirm('Bạn chắc chắn muốn lưu trữ SOP này?')) {
             return;
         }
 
         try {
             await archiveSop(id);
             await loadSops();
-            pushToast('Da luu tru SOP.', 'success');
+            pushToast('Đã lưu trữ SOP.', 'success');
         } catch (err) {
             setError(err.message || 'Không thể lưu trữ SOP.');
             pushToast(err.message || 'Không thể lưu trữ SOP.', 'error');
@@ -168,17 +180,17 @@ const SOP = () => {
     };
 
     const handleDuplicate = async (id) => {
-        if (!window.confirm('Ban muon duplicate SOP nay thanh ban draft moi?')) {
+        if (!window.confirm('Bạn muốn nhân bản SOP này thành bản nháp mới?')) {
             return;
         }
 
         try {
             await duplicateSop(id);
             await loadSops();
-            pushToast('Da duplicate SOP thanh cong.', 'success');
+            pushToast('Đã nhân bản SOP thành công.', 'success');
         } catch (err) {
-            setError(err.message || 'Khong the duplicate SOP.');
-            pushToast(err.message || 'Khong the duplicate SOP.', 'error');
+            setError(err.message || 'Không thể nhân bản SOP.');
+            pushToast(err.message || 'Không thể nhân bản SOP.', 'error');
         }
     };
 
@@ -310,7 +322,7 @@ const SOP = () => {
                                     <button type="button" onClick={addStep} className="rounded-lg border border-vps-gray/20 px-3 py-1.5 text-sm text-vps-ivory">+ Thêm bước</button>
                                 </div>
                                 {form.steps.map((step, index) => (
-                                    <div key={`${index}-${step.title}`} className="flex items-center gap-2">
+                                    <div key={step.id} className="flex items-center gap-2">
                                         <input value={step.title} onChange={(event) => updateStep(index, event.target.value)} placeholder={`Bước ${index + 1}`} className="flex-1 rounded-xl border border-vps-gray/20 bg-[#111111] px-3 py-2.5 text-sm text-vps-ivory outline-none focus:border-vps-gold" />
                                         {form.steps.length > 1 && (
                                             <button type="button" onClick={() => removeStep(index)} className="rounded-lg border border-rose-500/20 px-3 py-2 text-sm text-rose-300">Xóa</button>

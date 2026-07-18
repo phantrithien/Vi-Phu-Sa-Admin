@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, updateDoc, query, where, orderBy } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase.js';
 
 const TASK_COLLECTION = 'tasks';
@@ -67,9 +67,11 @@ export const listTasks = async ({ projectId = '', assignee = '' } = {}) => {
     if (projectId) constraints.push(where('projectId', '==', projectId));
     if (assignee) constraints.push(where('assignees', 'array-contains', assignee));
 
-    const q = query(collection(db, TASK_COLLECTION), ...constraints, orderBy('updatedAt', 'desc'));
+    const q = query(collection(db, TASK_COLLECTION), ...constraints);
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    return snapshot.docs
+        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+        .sort((left, right) => Number(right.updatedAt || 0) - Number(left.updatedAt || 0));
 };
 
 export const getTaskById = async (id) => {

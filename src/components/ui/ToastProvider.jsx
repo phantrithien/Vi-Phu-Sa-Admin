@@ -52,7 +52,7 @@ export const ToastProvider = ({ children }) => {
                                 onClick={() => removeToast(toast.id)}
                                 className="text-xs opacity-70 transition-opacity hover:opacity-100"
                             >
-                                Dong
+                                Đóng
                             </button>
                         </div>
                     </div>

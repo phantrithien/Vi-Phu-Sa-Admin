@@ -1,0 +1,6 @@
+import React from 'react';
+import { ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react';
+
+const RunSheetItem = ({ item, canManage, onEdit, onDelete, onMove }) => <div className="flex gap-3 rounded-xl border border-vps-gray/20 bg-[#181818] p-3"><div className="w-14 shrink-0 text-sm font-semibold text-vps-gold">{item.time || '--:--'}</div><div className="min-w-0 flex-1"><p className="font-medium text-vps-ivory">{item.activity || item.title}</p><p className="mt-1 text-xs text-vps-ivory/60">{[item.owner, item.location].filter(Boolean).join(' · ') || 'Chưa phân công / địa điểm'}</p>{item.note || item.description ? <p className="mt-2 text-sm text-vps-ivory/65">{item.note || item.description}</p> : null}</div>{canManage ? <div className="flex shrink-0 flex-col gap-1"><button onClick={() => onMove(item, -1)} className="p-1 text-vps-ivory/60"><ChevronUp className="h-4 w-4" /></button><button onClick={() => onMove(item, 1)} className="p-1 text-vps-ivory/60"><ChevronDown className="h-4 w-4" /></button><button onClick={() => onEdit(item)} className="p-1 text-vps-ivory"><Pencil className="h-4 w-4" /></button><button onClick={() => onDelete(item.id)} className="p-1 text-rose-300"><Trash2 className="h-4 w-4" /></button></div> : null}</div>;
+
+export default RunSheetItem;

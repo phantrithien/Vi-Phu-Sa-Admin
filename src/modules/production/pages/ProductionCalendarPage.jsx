@@ -1,0 +1,21 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { CalendarDays, ExternalLink, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+import AppShell from '../../../components/AppShell';
+import EmptyState from '../../../components/ui/EmptyState';
+import LoadingState from '../../../components/ui/LoadingState';
+import { listProjects } from '../../../services/projectService';
+import { PRODUCTION_STATUS_LABELS, PRODUCTION_STATUS_OPTIONS } from '../../../constants/productionStatus';
+import { PRODUCTION_TYPE_LABELS, PRODUCTION_TYPE_OPTIONS } from '../../../constants/productionTypes';
+import { listProductionDays } from '../productionService';
+
+const ProductionCalendarPage = () => {
+    const navigate = useNavigate(); const [days, setDays] = useState([]); const [projects, setProjects] = useState([]); const [loading, setLoading] = useState(true); const [date, setDate] = useState(''); const [status, setStatus] = useState('all'); const [type, setType] = useState('all');
+    useEffect(() => { Promise.all([listProductionDays(), listProjects()]).then(([productionDays, projectRows]) => { setDays(productionDays); setProjects(projectRows); }).finally(() => setLoading(false)); }, []);
+    const filtered = useMemo(() => days.filter((day) => (!date || day.date === date) && (status === 'all' || day.status === status) && (type === 'all' || day.type === type)), [days, date, status, type]);
+    const projectNames = useMemo(() => new Map(projects.map((project) => [project.id, project.title])), [projects]);
+    return <AppShell title="Production Calendar" subtitle="Theo dõi lịch sản xuất, call time và call sheet."><div className="space-y-5"><div className="grid gap-3 rounded-xl border border-vps-gray/20 bg-[#181818] p-4 md:grid-cols-3"><input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="rounded-lg border border-vps-gray/20 bg-[#111] px-3 py-2 text-sm text-vps-ivory outline-none focus:border-vps-gold" /><select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-lg border border-vps-gray/20 bg-[#111] px-3 py-2 text-sm text-vps-ivory"><option value="all">Mọi trạng thái</option>{PRODUCTION_STATUS_OPTIONS.map((value) => <option key={value} value={value}>{PRODUCTION_STATUS_LABELS[value]}</option>)}</select><select value={type} onChange={(event) => setType(event.target.value)} className="rounded-lg border border-vps-gray/20 bg-[#111] px-3 py-2 text-sm text-vps-ivory"><option value="all">Mọi loại production</option>{PRODUCTION_TYPE_OPTIONS.map((value) => <option key={value} value={value}>{PRODUCTION_TYPE_LABELS[value]}</option>)}</select></div>{loading ? <LoadingState title="Đang tải lịch production" /> : filtered.length === 0 ? <EmptyState title="Chưa có lịch production" description="Tạo ngày sản xuất trong workspace của dự án để lịch xuất hiện ở đây." /> : <div className="space-y-3">{filtered.map((day) => <div key={day.id} className="flex flex-col gap-3 rounded-xl border border-vps-gray/20 bg-[#181818] p-4 md:flex-row md:items-center md:justify-between"><div><p className="inline-flex items-center gap-2 text-sm text-vps-gold"><CalendarDays className="h-4 w-4" />{day.date} · {day.callTime || '--:--'} - {day.wrapTime || '--:--'}</p><h2 className="mt-1 font-semibold text-vps-ivory">{day.title}</h2><p className="mt-1 text-sm text-vps-ivory/60">{projectNames.get(day.projectId) || 'Dự án đã bị xóa'} · {day.location || 'Chưa có địa điểm'} · {PRODUCTION_STATUS_LABELS[day.status] || day.status}</p></div><div className="flex gap-2"><button onClick={() => navigate('/app/projects')} className="inline-flex items-center gap-1 rounded-lg border border-vps-gray/20 bg-[#111] px-3 py-2 text-sm text-vps-ivory"><ExternalLink className="h-4 w-4" />Project</button><button onClick={() => navigate(`/app/production/call-sheets/${day.id}`)} className="inline-flex items-center gap-1 rounded-lg bg-vps-gold px-3 py-2 text-sm font-semibold text-vps-black"><FileText className="h-4 w-4" />Call sheet</button></div></div>)}</div>}</div></AppShell>;
+};
+
+export default ProductionCalendarPage;

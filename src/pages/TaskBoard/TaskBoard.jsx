@@ -5,7 +5,7 @@ import {
     MoreHorizontal, Cloud, Search, Filter, AlertCircle,
     CheckCircle2, Clock, AlignLeft, CheckSquare, Tag, X,
     Maximize2, MessageSquare, Image as ImageIcon, Send,
-    ArrowUpDown, Bell, Users
+    ArrowUpDown, Bell, Users, ChevronLeft, ChevronRight, GripVertical
 } from 'lucide-react';
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -47,6 +47,7 @@ const TaskBoard = () => {
     const [filterAssignee, setFilterAssignee] = useState('All');
     const [sortType, setSortType] = useState('manual');
     const [dragOverColId, setDragOverColId] = useState(null);
+    const [mobileColumnId, setMobileColumnId] = useState('col-0');
 
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     const [editingTaskId, setEditingTaskId] = useState(null);
@@ -142,9 +143,7 @@ const TaskBoard = () => {
     const handleDragEnd = (e) => { e.target.classList.remove('opacity-50'); setDragOverColId(null); };
     const handleDragOver = (e, colId) => { e.preventDefault(); if (dragOverColId !== colId) setDragOverColId(colId); };
     const handleDragLeave = () => setDragOverColId(null);
-    const handleDrop = async (e, destColId) => {
-        e.preventDefault(); setDragOverColId(null);
-        const taskId = e.dataTransfer.getData('taskId'); const sourceColId = e.dataTransfer.getData('sourceColId');
+    const moveTask = async (taskId, sourceColId, destColId) => {
         if (!taskId || !sourceColId || sourceColId === destColId) return;
         const newBoard = { ...boardData };
         newBoard.columns[sourceColId].taskIds = newBoard.columns[sourceColId].taskIds.filter(id => id !== taskId);
@@ -173,6 +172,16 @@ const TaskBoard = () => {
         } catch (err) {
             console.error('Unable to persist task status', err);
         }
+    };
+
+    const handleDrop = async (e, destColId) => {
+        e.preventDefault();
+        setDragOverColId(null);
+        await moveTask(
+            e.dataTransfer.getData('taskId'),
+            e.dataTransfer.getData('sourceColId'),
+            destColId
+        );
     };
 
     const openNewTaskModal = (colId = 'col-0') => { if (!isManager) return; resetForm(); setTargetColForNewTask(colId); setIsTaskModalOpen(true); };
@@ -320,64 +329,67 @@ const TaskBoard = () => {
 
     return (
         <AppShell title="Task Board" subtitle="Theo dõi công việc và tiến độ nội bộ">
-            <div className="overflow-hidden flex flex-col h-[100dvh]">
-                <div className="mb-4 md:mb-6 flex flex-col xl:flex-row justify-between items-start xl:items-end gap-4 md:gap-6 shrink-0">
+            <div className="flex min-h-0 flex-col overflow-visible md:h-[calc(100dvh-9rem)] md:overflow-hidden">
+                <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between shrink-0">
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-vps-gold flex items-center gap-2 md:gap-3">
-                            <Layout className="w-6 h-6 md:w-8 md:h-8" /> {isManager ? 'Bảng Việc Tổng' : 'Việc Của Tôi'}
-                            <Cloud className="w-4 h-4 md:w-5 md:h-5 text-green-500" title="Đã đồng bộ với Cloud" />
-                        </h1>
-                        <p className="text-vps-ivory/60 mt-1 text-sm md:text-base">
+                        <div className="flex items-center gap-2 text-vps-gold">
+                            <Layout className="h-5 w-5" />
+                            <h2 className="text-lg font-semibold">{isManager ? 'Bảng công việc' : 'Việc của tôi'}</h2>
+                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+                                <Cloud className="h-3 w-3" /> Đã đồng bộ
+                            </span>
+                        </div>
+                        <p className="mt-1 text-sm text-vps-ivory/60">
                             {isManager ? 'Quản lý tiến độ dự án và phân công nhân sự.' : `Xin chào ${currentEmpName}, đây là công việc của bạn.`}
                         </p>
                     </div>
 
-                    <div className="flex gap-3 md:gap-4 overflow-x-auto w-full xl:w-auto pb-2 xl:pb-0 items-center snap-x hide-scrollbar">
+                    <div className="grid grid-cols-3 gap-2 sm:flex sm:w-auto sm:items-center sm:gap-3">
                         {notiPermission !== 'granted' && (
-                            <button onClick={handleEnableNotifications} className="snap-start shrink-0 px-3 py-2 md:px-4 md:py-2.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 font-bold rounded-xl text-xs flex items-center gap-2 hover:bg-blue-500/20 transition-all animate-pulse">
+                            <button onClick={handleEnableNotifications} className="col-span-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 text-xs font-semibold text-blue-300 transition-colors hover:bg-blue-500/20 sm:col-span-1 sm:px-4">
                                 <Bell className="w-4 h-4" /> Bật thông báo
                             </button>
                         )}
-                        <div className="snap-start shrink-0 bg-[#1A1A1A] border border-vps-gray/40 rounded-xl p-2.5 md:p-3 flex items-center gap-3 min-w-[120px]">
-                            <div className="p-1.5 md:p-2 bg-blue-500/10 rounded-lg"><Clock className="w-4 h-4 md:w-5 md:h-5 text-blue-400" /></div>
-                            <div><p className="text-[10px] md:text-xs text-gray-400">Tổng Task</p><p className="text-base md:text-lg font-bold text-vps-ivory">{stats.total}</p></div>
+                        <div className="flex min-w-0 items-center gap-2 rounded-xl border border-vps-gray/30 bg-[#181818] px-2.5 py-2 sm:min-w-[112px] sm:px-3">
+                            <div className="rounded-lg bg-blue-500/10 p-1.5"><Clock className="h-4 w-4 text-blue-400" /></div>
+                            <div><p className="text-[10px] text-vps-ivory/50">Tổng task</p><p className="text-base font-semibold text-vps-ivory">{stats.total}</p></div>
                         </div>
-                        <div className="snap-start shrink-0 bg-[#1A1A1A] border border-vps-gray/40 rounded-xl p-2.5 md:p-3 flex items-center gap-3 min-w-[120px]">
-                            <div className="p-1.5 md:p-2 bg-red-500/10 rounded-lg"><AlertCircle className="w-4 h-4 md:w-5 md:h-5 text-red-400" /></div>
-                            <div><p className="text-[10px] md:text-xs text-gray-400">Quá hạn</p><p className="text-base md:text-lg font-bold text-red-400">{stats.overdue}</p></div>
+                        <div className="flex min-w-0 items-center gap-2 rounded-xl border border-vps-gray/30 bg-[#181818] px-2.5 py-2 sm:min-w-[112px] sm:px-3">
+                            <div className="rounded-lg bg-rose-500/10 p-1.5"><AlertCircle className="h-4 w-4 text-rose-400" /></div>
+                            <div><p className="text-[10px] text-vps-ivory/50">Quá hạn</p><p className="text-base font-semibold text-rose-400">{stats.overdue}</p></div>
                         </div>
-                        <div className="snap-start shrink-0 bg-[#1A1A1A] border border-vps-gray/40 rounded-xl p-2.5 md:p-3 flex items-center gap-3 min-w-[120px]">
-                            <div className="p-1.5 md:p-2 bg-green-500/10 rounded-lg"><CheckCircle2 className="w-4 h-4 md:w-5 md:h-5 text-green-400" /></div>
-                            <div><p className="text-[10px] md:text-xs text-gray-400">Hoàn thành</p><p className="text-base md:text-lg font-bold text-green-400">{stats.completed}</p></div>
+                        <div className="flex min-w-0 items-center gap-2 rounded-xl border border-vps-gray/30 bg-[#181818] px-2.5 py-2 sm:min-w-[112px] sm:px-3">
+                            <div className="rounded-lg bg-emerald-500/10 p-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-400" /></div>
+                            <div><p className="text-[10px] text-vps-ivory/50">Hoàn thành</p><p className="text-base font-semibold text-emerald-400">{stats.completed}</p></div>
                         </div>
                     </div>
                 </div>
 
-                <div className="mb-4 md:mb-6 flex flex-col gap-3 shrink-0 bg-[#1A1A1A] p-3 md:p-4 rounded-xl border border-vps-gray/30">
-                    <div className="relative w-full">
+                <div className="mb-4 flex flex-col gap-3 rounded-xl border border-vps-gray/30 bg-[#181818] p-3 shrink-0 lg:flex-row lg:items-center">
+                    <div className="relative w-full lg:max-w-lg">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                         <input
                             type="text" placeholder="Tìm kiếm công việc..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-[#111] border border-vps-gray/50 rounded-lg py-2 pl-9 pr-4 text-sm text-vps-ivory focus:border-vps-gold outline-none transition-colors"
+                            className="min-h-11 w-full rounded-lg border border-vps-gray/40 bg-[#111] py-2 pl-9 pr-4 text-sm text-vps-ivory outline-none transition-colors focus:border-vps-gold"
                         />
                     </div>
-                    <div className="flex gap-2 md:gap-4 overflow-x-auto pb-1 snap-x hide-scrollbar">
-                        <div className="snap-start relative flex items-center border border-vps-gray/50 bg-[#111] rounded-lg px-3 py-1.5 md:py-2 text-xs md:text-sm text-vps-ivory shrink-0">
-                            <ArrowUpDown className="w-3 h-3 md:w-4 md:h-4 text-gray-500 mr-2" />
-                            <select className="bg-transparent outline-none appearance-none cursor-pointer pr-4" value={sortType} onChange={(e) => setSortType(e.target.value)}>
+                    <div className="grid grid-cols-2 gap-2 sm:flex lg:ml-auto">
+                        <div className="relative flex min-h-11 items-center rounded-lg border border-vps-gray/40 bg-[#111] px-3 text-xs text-vps-ivory sm:text-sm">
+                            <ArrowUpDown className="mr-2 h-4 w-4 shrink-0 text-vps-ivory/40" />
+                            <select className="w-full appearance-none bg-transparent outline-none cursor-pointer pr-3" value={sortType} onChange={(e) => setSortType(e.target.value)}>
                                 <option value="manual">Sắp xếp: Kéo thả</option><option value="deadline">Sắp xếp: Hạn chót</option><option value="priority">Sắp xếp: Ưu tiên</option>
                             </select>
                         </div>
-                        <div className="snap-start relative flex items-center border border-vps-gray/50 bg-[#111] rounded-lg px-3 py-1.5 md:py-2 text-xs md:text-sm text-vps-ivory shrink-0">
-                            <Filter className="w-3 h-3 md:w-4 md:h-4 text-gray-500 mr-2" />
-                            <select className="bg-transparent outline-none appearance-none cursor-pointer pr-4" value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+                        <div className="relative flex min-h-11 items-center rounded-lg border border-vps-gray/40 bg-[#111] px-3 text-xs text-vps-ivory sm:text-sm">
+                            <Filter className="mr-2 h-4 w-4 shrink-0 text-vps-ivory/40" />
+                            <select className="w-full appearance-none bg-transparent outline-none cursor-pointer pr-3" value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
                                 <option value="All">Tất cả ưu tiên</option><option value="High">Cao</option><option value="Medium">Trung bình</option><option value="Low">Thấp</option>
                             </select>
                         </div>
                         {isManager && (
-                            <div className="snap-start relative flex items-center border border-vps-gray/50 bg-[#111] rounded-lg px-3 py-1.5 md:py-2 text-xs md:text-sm text-vps-ivory shrink-0">
-                                <User className="w-3 h-3 md:w-4 md:h-4 text-gray-500 mr-2" />
-                                <select className="bg-transparent outline-none appearance-none cursor-pointer pr-4 max-w-[120px] md:max-w-[150px] truncate" value={filterAssignee} onChange={(e) => setFilterAssignee(e.target.value)}>
+                            <div className="relative col-span-2 flex min-h-11 items-center rounded-lg border border-vps-gray/40 bg-[#111] px-3 text-xs text-vps-ivory sm:col-span-1 sm:text-sm">
+                                <User className="mr-2 h-4 w-4 shrink-0 text-vps-ivory/40" />
+                                <select className="w-full appearance-none truncate bg-transparent outline-none cursor-pointer pr-3" value={filterAssignee} onChange={(e) => setFilterAssignee(e.target.value)}>
                                     <option value="All">Mọi nhân sự</option>
                                     {employees.map(emp => (<option key={emp.id} value={emp.name}>{emp.name}</option>))}
                                 </select>
@@ -391,183 +403,240 @@ const TaskBoard = () => {
                 ) : !boardData ? (
                     <div className="flex-1 flex items-center justify-center text-red-400">Lỗi kết nối dữ liệu Kanban!</div>
                 ) : (
-                    <div className="flex-1 flex gap-3 md:gap-5 overflow-x-auto pb-4 custom-scrollbar items-start snap-x snap-mandatory">
-                        {boardData.columnOrder.map((colId) => {
-                            const column = boardData.columns[colId];
+                    <>
+                        <div className="mb-3 flex gap-2 overflow-x-auto pb-1 md:hidden hide-scrollbar">
+                            {boardData.columnOrder.map((colId) => {
+                                const column = boardData.columns[colId];
+                                return (
+                                    <button
+                                        key={column.id}
+                                        onClick={() => setMobileColumnId(column.id)}
+                                        className={`min-h-10 shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors ${mobileColumnId === column.id ? 'border-vps-gold bg-vps-gold text-vps-black' : 'border-vps-gray/30 bg-[#181818] text-vps-ivory/70'}`}
+                                    >
+                                        {column.title}
+                                    </button>
+                                );
+                            })}
+                        </div>
 
-                            let tasks = column.taskIds.map(taskId => boardData.tasks[taskId]).filter(Boolean).filter(task => {
-                                const matchSearch = task.content.toLowerCase().includes(searchQuery.toLowerCase());
-                                const matchPriority = filterPriority === 'All' || task.priority === filterPriority;
-                                let matchAssignee = true;
+                        <div className="flex-1 flex gap-3 overflow-x-auto pb-4 custom-scrollbar items-start md:gap-5 md:snap-x md:snap-mandatory">
+                            {boardData.columnOrder.map((colId) => {
+                                const column = boardData.columns[colId];
 
-                                // Tương thích dữ liệu
-                                let taskAssignees = task.assignees || [];
-                                if (task.assignee && taskAssignees.length === 0 && task.assignee !== 'Trống') taskAssignees = [task.assignee];
+                                let tasks = column.taskIds.map(taskId => boardData.tasks[taskId]).filter(Boolean).filter(task => {
+                                    const matchSearch = task.content.toLowerCase().includes(searchQuery.toLowerCase());
+                                    const matchPriority = filterPriority === 'All' || task.priority === filterPriority;
+                                    let matchAssignee = true;
 
-                                if (isManager) {
-                                    matchAssignee = filterAssignee === 'All' || taskAssignees.includes(filterAssignee);
-                                } else {
-                                    matchAssignee = taskAssignees.includes(currentEmpName);
-                                }
-                                return matchSearch && matchPriority && matchAssignee;
-                            });
+                                    // Tương thích dữ liệu
+                                    let taskAssignees = task.assignees || [];
+                                    if (task.assignee && taskAssignees.length === 0 && task.assignee !== 'Trống') taskAssignees = [task.assignee];
 
-                            if (sortType === 'deadline') tasks.sort((a, b) => new Date(a.deadline || '2100-01-01') - new Date(b.deadline || '2100-01-01'));
-                            else if (sortType === 'priority') { const pVal = { High: 3, Medium: 2, Low: 1 }; tasks.sort((a, b) => pVal[b.priority] - pVal[a.priority]); }
+                                    if (isManager) {
+                                        matchAssignee = filterAssignee === 'All' || taskAssignees.includes(filterAssignee);
+                                    } else {
+                                        matchAssignee = taskAssignees.includes(currentEmpName);
+                                    }
+                                    return matchSearch && matchPriority && matchAssignee;
+                                });
 
-                            const isDraggingOver = dragOverColId === column.id;
+                                if (sortType === 'deadline') tasks.sort((a, b) => new Date(a.deadline || '2100-01-01') - new Date(b.deadline || '2100-01-01'));
+                                else if (sortType === 'priority') { const pVal = { High: 3, Medium: 2, Low: 1 }; tasks.sort((a, b) => pVal[b.priority] - pVal[a.priority]); }
 
-                            return (
-                                <div
-                                    key={column.id}
-                                    className={`bg-[#181818] rounded-xl md:rounded-2xl flex flex-col min-w-[85vw] md:min-w-[320px] w-[85vw] md:w-[320px] max-h-full shrink-0 shadow-lg transition-all duration-300 snap-center
-                                        ${isDraggingOver ? 'bg-[#1e1c15] ring-2 ring-vps-gold' : ''}`}
-                                    onDragOver={(e) => handleDragOver(e, column.id)} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, column.id)}
-                                >
-                                    <div className="p-3 md:p-3.5 flex justify-between items-center sticky top-0 z-10">
-                                        <h2 className="font-bold text-sm text-vps-ivory flex items-center gap-2">
-                                            {column.title}
-                                            <span className="bg-[#2A2A2A] text-vps-gold text-[10px] px-2 py-0.5 rounded-full font-mono">{tasks.length}</span>
-                                        </h2>
-                                        <MoreHorizontal className="w-4 h-4 text-gray-500 hover:text-vps-ivory cursor-pointer transition-colors" />
-                                    </div>
+                                const isDraggingOver = dragOverColId === column.id;
+                                const columnIndex = boardData.columnOrder.indexOf(column.id);
+                                const previousColumnId = boardData.columnOrder[columnIndex - 1] || null;
+                                const nextColumnId = boardData.columnOrder[columnIndex + 1] || null;
 
-                                    <div className="px-2 md:px-3 pb-3 flex-1 overflow-y-auto space-y-2.5 md:space-y-3 custom-scrollbar min-h-[100px]">
-                                        {tasks.map((task) => {
-                                            const today = new Date(); today.setHours(0, 0, 0, 0);
-                                            const isOverdue = task.deadline && new Date(task.deadline) < today && colId !== 'col-4';
-                                            const isDueSoon = task.deadline && new Date(task.deadline).getTime() - today.getTime() <= 86400000 && !isOverdue && colId !== 'col-4';
-                                            const totalChecklists = task.checklists?.length || 0;
-                                            const completedChecklists = task.checklists?.filter(c => c.isCompleted).length || 0;
-                                            const checklistDone = totalChecklists > 0 && totalChecklists === completedChecklists;
+                                return (
+                                    <div
+                                        key={column.id}
+                                        className={`${mobileColumnId === column.id ? 'flex' : 'hidden'} w-full min-w-full min-h-[58dvh] shrink-0 flex-col rounded-xl border border-vps-gray/20 bg-[#181818] shadow-lg transition-colors md:flex md:min-w-[340px] md:w-[340px] md:max-h-full md:rounded-xl md:snap-center
+                                        ${isDraggingOver ? 'border-vps-gold bg-[#211f16] ring-1 ring-vps-gold' : ''}`}
+                                        onDragOver={(e) => handleDragOver(e, column.id)} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, column.id)}
+                                    >
+                                        <div className="flex items-center justify-between border-b border-vps-gray/15 bg-[#181818] p-3 sticky top-0 z-10">
+                                            <h2 className="font-bold text-sm text-vps-ivory flex items-center gap-2">
+                                                {column.title}
+                                                <span className="bg-[#2A2A2A] text-vps-gold text-[10px] px-2 py-0.5 rounded-full font-mono">{tasks.length}</span>
+                                            </h2>
+                                            <MoreHorizontal className="h-4 w-4 text-vps-ivory/35" />
+                                        </div>
 
-                                            // Xác định nhân sự để hiển thị trên Thẻ
-                                            let displayAssignees = task.assignees || [];
-                                            if (task.assignee && displayAssignees.length === 0 && task.assignee !== 'Trống' && task.assignee !== 'Đang trống') {
-                                                displayAssignees = [task.assignee];
-                                            }
-                                            const assigneesCount = displayAssignees.length;
+                                        <div className="min-h-[100px] flex-1 space-y-2.5 overflow-y-auto px-2 pb-3 custom-scrollbar md:px-3">
+                                            {tasks.map((task) => {
+                                                const today = new Date(); today.setHours(0, 0, 0, 0);
+                                                const isOverdue = task.deadline && new Date(task.deadline) < today && colId !== 'col-4';
+                                                const isDueSoon = task.deadline && new Date(task.deadline).getTime() - today.getTime() <= 86400000 && !isOverdue && colId !== 'col-4';
+                                                const totalChecklists = task.checklists?.length || 0;
+                                                const completedChecklists = task.checklists?.filter(c => c.isCompleted).length || 0;
+                                                const checklistDone = totalChecklists > 0 && totalChecklists === completedChecklists;
 
-                                            return (
-                                                <div
-                                                    key={task.id} draggable={sortType === 'manual'}
-                                                    onDragStart={(e) => handleDragStart(e, task.id, column.id)} onDragEnd={handleDragEnd} onClick={() => handleCardClick(task.id)}
-                                                    className={`bg-[#222] border hover:border-vps-gold/50 rounded-xl cursor-pointer group shadow-sm transition-all relative overflow-hidden flex flex-col
-                                                        ${isOverdue ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : checklistDone && colId !== 'col-4' ? 'border-green-500/40 shadow-[0_0_15px_rgba(34,197,94,0.1)]' : 'border-vps-gray/20'}`}
-                                                >
-                                                    {task.coverUrl && (
-                                                        <div className="w-full h-24 md:h-28 bg-[#111] overflow-hidden">
-                                                            <img src={task.coverUrl} alt="Cover" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
-                                                        </div>
-                                                    )}
+                                                // Xác định nhân sự để hiển thị trên Thẻ
+                                                let displayAssignees = task.assignees || [];
+                                                if (task.assignee && displayAssignees.length === 0 && task.assignee !== 'Trống' && task.assignee !== 'Đang trống') {
+                                                    displayAssignees = [task.assignee];
+                                                }
+                                                const assigneesCount = displayAssignees.length;
 
-                                                    <div className="p-3">
-                                                        {isOverdue && <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>}
-                                                        {isDueSoon && <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500"></div>}
-                                                        {checklistDone && !isOverdue && colId !== 'col-4' && <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>}
-
-                                                        {task.labels && task.labels.length > 0 && (
-                                                            <div className="flex flex-wrap gap-1 mb-2">
-                                                                {task.labels.map(lbl => (<span key={lbl} className={`w-6 md:w-8 h-1.5 md:h-2 rounded-full ${LABEL_COLORS.find(c => c.id === lbl)?.class}`}></span>))}
+                                                return (
+                                                    <div
+                                                        key={task.id} draggable={sortType === 'manual'}
+                                                        onDragStart={(e) => handleDragStart(e, task.id, column.id)} onDragEnd={handleDragEnd} onClick={() => handleCardClick(task.id)}
+                                                        className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border bg-[#202020] shadow-sm transition-colors hover:border-vps-gold/50 hover:bg-[#242424]
+                                                        ${isOverdue ? 'border-rose-500/50' : checklistDone && colId !== 'col-4' ? 'border-emerald-500/40' : 'border-vps-gray/20'}`}
+                                                    >
+                                                        {task.coverUrl && (
+                                                            <div className="w-full h-24 md:h-28 bg-[#111] overflow-hidden">
+                                                                <img src={task.coverUrl} alt="Cover" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" />
                                                             </div>
                                                         )}
 
-                                                        {isManager && (
-                                                            <button onClick={(e) => handleDeleteTask(e, task.id, column.id)} className="absolute top-2 right-2 md:top-3 md:right-3 text-red-400 opacity-100 md:opacity-0 group-hover:opacity-100 hover:bg-red-400/10 p-1.5 rounded transition-all">
-                                                                <Trash2 className="w-3.5 h-3.5" />
-                                                            </button>
-                                                        )}
+                                                        <div className="p-3">
+                                                            {isOverdue && <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>}
+                                                            {isDueSoon && <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500"></div>}
+                                                            {checklistDone && !isOverdue && colId !== 'col-4' && <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>}
 
-                                                        <h3 className="text-sm font-medium text-vps-ivory mb-2 md:mb-3 leading-snug pr-6 uppercase">{task.content}</h3>
-
-                                                        <div className="flex flex-wrap items-center gap-2 md:gap-3 text-[10px] md:text-[11px] text-gray-400 mb-2 font-medium">
-                                                            {task.description && (<div className="flex items-center gap-1"><AlignLeft className="w-3 h-3" /></div>)}
-                                                            {task.comments?.length > 0 && (
-                                                                <div className={`flex items-center gap-1 ${task.comments.filter(c => !c.isSystem).length > 0 ? 'text-blue-400' : ''}`}>
-                                                                    <MessageSquare className="w-3 h-3" /> <span>{task.comments.filter(c => !c.isSystem).length}</span>
+                                                            {task.labels && task.labels.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1 mb-2">
+                                                                    {task.labels.map(lbl => (<span key={lbl} className={`w-6 md:w-8 h-1.5 md:h-2 rounded-full ${LABEL_COLORS.find(c => c.id === lbl)?.class}`}></span>))}
                                                                 </div>
                                                             )}
-                                                            {totalChecklists > 0 && (
-                                                                <div className={`flex items-center gap-1 px-1 py-0.5 rounded ${checklistDone ? 'bg-green-500/20 text-green-400' : ''}`}>
-                                                                    <CheckSquare className="w-3 h-3" /> <span>{completedChecklists}/{totalChecklists}</span>
-                                                                </div>
+
+                                                            <GripVertical className="pointer-events-none absolute right-2 top-3 hidden h-4 w-4 text-vps-ivory/20 group-hover:text-vps-ivory/45 md:block" />
+                                                            {isManager && (
+                                                                <button aria-label={`Xóa ${task.content}`} onClick={(e) => handleDeleteTask(e, task.id, column.id)} className="absolute right-2 top-2 rounded-lg p-1.5 text-rose-400 opacity-100 transition-colors hover:bg-rose-400/10 md:opacity-0 md:group-hover:opacity-100">
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </button>
                                                             )}
-                                                        </div>
 
-                                                        <div className="flex items-center justify-between text-[10px] border-t border-vps-gray/10 pt-2 mt-auto">
+                                                            <h3 className="mb-2 pr-6 text-sm font-semibold leading-snug text-vps-ivory">{task.content}</h3>
 
-                                                            {/* HIỂN THỊ NHÂN SỰ HOẶC NÚT THAM GIA */}
-                                                            <div className="flex items-center gap-1.5 z-10">
-                                                                <div className="bg-[#111] p-1 rounded-full">
-                                                                    {assigneesCount > 1 ? <Users className="w-3 h-3 text-vps-gold" /> : <User className="w-3 h-3 text-vps-gold" />}
-                                                                </div>
-                                                                {assigneesCount === 0 ? (
-                                                                    <button onClick={(e) => handleJoinTask(e, task.id)} className="bg-vps-gold/20 text-vps-gold px-2 py-1 md:py-0.5 rounded text-[10px] font-bold hover:bg-vps-gold hover:text-black transition-all cursor-pointer relative z-20">
-                                                                        Tham gia
-                                                                    </button>
-                                                                ) : assigneesCount === 1 ? (
-                                                                    <span className="truncate max-w-[70px] md:max-w-[90px] font-medium text-gray-300">{displayAssignees[0]}</span>
-                                                                ) : (
-                                                                    <span className="truncate max-w-[70px] md:max-w-[120px] font-medium text-vps-gold">Nhóm phụ trách ({assigneesCount})</span>
+                                                            <div className="flex flex-wrap items-center gap-2 md:gap-3 text-[10px] md:text-[11px] text-gray-400 mb-2 font-medium">
+                                                                {task.description && (<div className="flex items-center gap-1"><AlignLeft className="w-3 h-3" /></div>)}
+                                                                {task.comments?.length > 0 && (
+                                                                    <div className={`flex items-center gap-1 ${task.comments.filter(c => !c.isSystem).length > 0 ? 'text-blue-400' : ''}`}>
+                                                                        <MessageSquare className="w-3 h-3" /> <span>{task.comments.filter(c => !c.isSystem).length}</span>
+                                                                    </div>
+                                                                )}
+                                                                {totalChecklists > 0 && (
+                                                                    <div className={`flex items-center gap-1 px-1 py-0.5 rounded ${checklistDone ? 'bg-green-500/20 text-green-400' : ''}`}>
+                                                                        <CheckSquare className="w-3 h-3" /> <span>{completedChecklists}/{totalChecklists}</span>
+                                                                    </div>
                                                                 )}
                                                             </div>
 
-                                                            <div className={`flex items-center gap-1 px-1.5 py-1 rounded-md ${isOverdue ? 'bg-red-500/20 text-red-400 font-bold' : isDueSoon ? 'bg-yellow-500/20 text-yellow-400 font-bold' : ' text-gray-400'}`}>
-                                                                <Calendar className="w-3 h-3" />
-                                                                <span>{task.deadline ? new Date(task.deadline).toLocaleDateString('vi-VN').substring(0, 5) : '---'}</span>
+                                                            <div className="flex items-center justify-between text-[10px] border-t border-vps-gray/10 pt-2 mt-auto">
+
+                                                                {/* HIỂN THỊ NHÂN SỰ HOẶC NÚT THAM GIA */}
+                                                                <div className="z-10 flex items-center gap-1.5">
+                                                                    <div className="bg-[#111] p-1 rounded-full">
+                                                                        {assigneesCount > 1 ? <Users className="w-3 h-3 text-vps-gold" /> : <User className="w-3 h-3 text-vps-gold" />}
+                                                                    </div>
+                                                                    {assigneesCount === 0 ? (
+                                                                        <button onClick={(e) => handleJoinTask(e, task.id)} className="bg-vps-gold/20 text-vps-gold px-2 py-1 md:py-0.5 rounded text-[10px] font-bold hover:bg-vps-gold hover:text-black transition-all cursor-pointer relative z-20">
+                                                                            Tham gia
+                                                                        </button>
+                                                                    ) : assigneesCount === 1 ? (
+                                                                        <span className="truncate max-w-[70px] md:max-w-[90px] font-medium text-gray-300">{displayAssignees[0]}</span>
+                                                                    ) : (
+                                                                        <span className="truncate max-w-[70px] md:max-w-[120px] font-medium text-vps-gold">Nhóm phụ trách ({assigneesCount})</span>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className={`flex items-center gap-1 px-1.5 py-1 rounded-md ${isOverdue ? 'bg-red-500/20 text-red-400 font-bold' : isDueSoon ? 'bg-yellow-500/20 text-yellow-400 font-bold' : ' text-gray-400'}`}>
+                                                                    <Calendar className="w-3 h-3" />
+                                                                    <span>{task.deadline ? new Date(task.deadline).toLocaleDateString('vi-VN').substring(0, 5) : '---'}</span>
+                                                                </div>
                                                             </div>
+
+                                                            {isManager ? (
+                                                                <div className="mt-3 border-t border-vps-gray/10 pt-3 md:hidden">
+                                                                    <div className="grid grid-cols-2 gap-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={!previousColumnId}
+                                                                            onClick={(event) => {
+                                                                                event.stopPropagation();
+                                                                                moveTask(task.id, column.id, previousColumnId);
+                                                                                setMobileColumnId(previousColumnId);
+                                                                            }}
+                                                                            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg border border-vps-gray/30 bg-[#111] px-3 text-xs font-semibold text-vps-ivory disabled:cursor-not-allowed disabled:opacity-30"
+                                                                        >
+                                                                            <ChevronLeft className="h-4 w-4" />
+                                                                            Lùi
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={!nextColumnId}
+                                                                            onClick={(event) => {
+                                                                                event.stopPropagation();
+                                                                                moveTask(task.id, column.id, nextColumnId);
+                                                                                setMobileColumnId(nextColumnId);
+                                                                            }}
+                                                                            className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg bg-vps-gold px-3 text-xs font-semibold text-vps-black disabled:cursor-not-allowed disabled:opacity-30"
+                                                                        >
+                                                                            Tiếp
+                                                                            <ChevronRight className="h-4 w-4" />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : null}
                                                         </div>
                                                     </div>
+                                                )
+                                            })}
+                                            {tasks.length === 0 && !isDraggingOver && (
+                                                <div className="h-12 md:h-16 border border-dashed border-vps-gray/20 rounded-xl flex items-center justify-center text-gray-500 text-xs opacity-50">
+                                                    {isManager ? 'Thả thẻ vào đây' : 'Trống việc 🎉'}
                                                 </div>
-                                            )
-                                        })}
-                                        {tasks.length === 0 && !isDraggingOver && (
-                                            <div className="h-12 md:h-16 border border-dashed border-vps-gray/20 rounded-xl flex items-center justify-center text-gray-500 text-xs opacity-50">
-                                                {isManager ? 'Thả thẻ vào đây' : 'Trống việc 🎉'}
+                                            )}
+                                        </div>
+
+                                        {isManager && (
+                                            <div className="px-2 pb-2 md:px-3 md:pb-3">
+                                                <button onClick={() => openNewTaskModal(column.id)} className="flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-dashed border-vps-gray/30 px-3 text-xs font-medium text-vps-ivory/60 transition-colors hover:border-vps-gold/50 hover:bg-vps-gold/10 hover:text-vps-gold">
+                                                    <Plus className="w-3.5 h-3.5" /> Thêm thẻ
+                                                </button>
                                             </div>
                                         )}
                                     </div>
-
-                                    {isManager && (
-                                        <div className="px-2 md:px-3 pb-2 md:pb-3">
-                                            <button onClick={() => openNewTaskModal(column.id)} className="w-full flex items-center justify-start gap-2 px-3 py-2 text-xs text-gray-400 hover:text-vps-ivory hover:bg-[#2A2A2A] rounded-lg transition-colors">
-                                                <Plus className="w-3.5 h-3.5" /> Thêm thẻ
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+                    </>
                 )}
             </div>
 
             {/* --- MODAL TRELLO (VIEW & EDIT) --- */}
             {isTaskModalOpen && (
-                <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-0 md:p-4">
-                    <div className="bg-[#1A1A1A] border-0 md:border border-vps-gray/30 rounded-none md:rounded-2xl w-full h-[100dvh] md:h-auto md:max-h-[95vh] max-w-5xl overflow-hidden flex flex-col shadow-2xl relative">
+                <div className="fixed inset-0 z-50 flex items-end bg-black/80 p-0 backdrop-blur-sm md:items-center md:justify-center md:p-4">
+                    <div className="relative flex h-[94dvh] w-full max-w-6xl flex-col overflow-hidden rounded-t-2xl border border-vps-gray/30 bg-[#1A1A1A] shadow-2xl md:h-auto md:max-h-[92vh] md:rounded-2xl">
 
-                        <div className="p-4 md:p-5 border-b border-vps-gray/20 flex justify-between items-center bg-[#1E1E1E] shrink-0 sticky top-0 z-20">
-                            <div className="flex items-center gap-2 md:gap-3 text-vps-gold">
-                                <Maximize2 className="w-4 h-4 md:w-5 md:h-5" />
-                                <h2 className="text-base md:text-lg font-bold uppercase">{isManager ? (editingTaskId ? 'Chi tiết Thẻ' : 'Tạo Thẻ Mới') : 'Chi tiết Công việc'}</h2>
+                        <div className="z-20 flex shrink-0 items-center justify-between border-b border-vps-gray/20 bg-[#1E1E1E] p-4">
+                            <div className="flex items-center gap-2 text-vps-gold">
+                                <Maximize2 className="h-4 w-4" />
+                                <div>
+                                    <p className="text-[11px] font-medium text-vps-gold/70">Task workspace</p>
+                                    <h2 className="text-base font-semibold text-vps-ivory">{isManager ? (editingTaskId ? 'Chi tiết công việc' : 'Tạo công việc mới') : 'Chi tiết công việc'}</h2>
+                                </div>
                             </div>
-                            <button onClick={() => setIsTaskModalOpen(false)} className="text-gray-500 hover:text-vps-ivory bg-[#111] p-2 rounded-lg transition-colors"><X className="w-5 h-5" /></button>
+                            <button aria-label="Đóng chi tiết công việc" onClick={() => setIsTaskModalOpen(false)} className="rounded-lg border border-vps-gray/20 bg-[#111] p-2 text-vps-ivory/60 transition-colors hover:text-vps-ivory"><X className="h-5 w-5" /></button>
                         </div>
 
-                        <div className="flex flex-col md:flex-row flex-1 overflow-y-auto md:overflow-hidden">
-                            <div className="flex-1 flex flex-col overflow-visible md:overflow-hidden">
+                        <div className="flex flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
+                            <div className="flex flex-1 flex-col md:overflow-hidden">
                                 {taskForm.coverUrl && (
                                     <div className="w-full h-32 md:h-40 bg-[#111] shrink-0">
                                         <img src={taskForm.coverUrl} alt="Cover" className="w-full h-full object-cover" />
                                     </div>
                                 )}
 
-                                <div className="flex-1 p-4 md:p-6 space-y-6 md:space-y-8 overflow-y-visible md:overflow-y-auto custom-scrollbar">
+                                <div className="flex-1 space-y-6 p-4 md:space-y-8 md:overflow-y-auto md:p-6 custom-scrollbar">
                                     <div>
                                         <textarea
                                             required rows="2" placeholder="Tiêu đề..." disabled={!isManager}
-                                            className="w-full bg-transparent border-none text-xl md:text-2xl font-bold text-vps-ivory focus:ring-0 outline-none resize-none p-0 placeholder-gray-600 disabled:bg-transparent uppercase"
+                                            className="w-full resize-none border-none bg-transparent p-0 text-xl font-semibold text-vps-ivory outline-none focus:ring-0 placeholder:text-vps-ivory/30 disabled:bg-transparent md:text-2xl"
                                             value={taskForm.content} onChange={e => setTaskForm({ ...taskForm, content: e.target.value })}
                                         />
                                     </div>
@@ -581,7 +650,7 @@ const TaskBoard = () => {
                                     )}
 
                                     <div>
-                                        <label className="flex items-center gap-2 text-sm font-bold text-gray-300 mb-2"><AlignLeft className="w-4 h-4 text-gray-500" /> Mô tả chi tiết</label>
+                                        <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-vps-ivory/80"><AlignLeft className="h-4 w-4 text-vps-ivory/40" /> Mô tả chi tiết</label>
                                         <textarea
                                             rows="3" placeholder={isManager ? "Thêm mô tả chi tiết hơn..." : "Chưa có mô tả."} disabled={!isManager}
                                             className={`w-full bg-[#111] border border-vps-gray/40 rounded-xl p-3 md:p-4 text-sm text-vps-ivory focus:border-vps-gold outline-none resize-none transition-colors ${!isManager && 'cursor-not-allowed opacity-80'}`}
@@ -590,8 +659,8 @@ const TaskBoard = () => {
                                     </div>
 
                                     <div>
-                                        <div className="flex items-center justify-between mb-3">
-                                            <label className="flex items-center gap-2 text-sm font-bold text-gray-300"><CheckSquare className="w-4 h-4 text-gray-500" /> Việc cần làm</label>
+                                        <div className="mb-3 flex items-center justify-between">
+                                            <label className="flex items-center gap-2 text-sm font-semibold text-vps-ivory/80"><CheckSquare className="h-4 w-4 text-vps-ivory/40" /> Việc cần làm</label>
                                             <span className="text-xs font-mono bg-[#111] px-2 py-1 rounded-lg text-gray-400">{taskForm.checklists.filter(c => c.isCompleted).length} / {taskForm.checklists.length}</span>
                                         </div>
                                         {taskForm.checklists.length > 0 && (
@@ -624,8 +693,8 @@ const TaskBoard = () => {
                                 </div>
 
                                 {editingTaskId && (
-                                    <div className="h-auto md:h-72 shrink-0 bg-[#151515] border-t border-vps-gray/20 p-4 md:p-5 flex flex-col">
-                                        <label className="flex items-center gap-2 text-sm font-bold text-gray-300 mb-4"><MessageSquare className="w-4 h-4 text-gray-500" /> Bình luận</label>
+                                    <div className="flex shrink-0 flex-col border-t border-vps-gray/20 bg-[#151515] p-4 md:h-72 md:p-5">
+                                        <label className="mb-4 flex items-center gap-2 text-sm font-semibold text-vps-ivory/80"><MessageSquare className="h-4 w-4 text-vps-ivory/40" /> Bình luận</label>
                                         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 mb-4 pr-1 min-h-[150px] max-h-[300px] md:max-h-none">
                                             {taskForm.comments.map(c => (
                                                 c.isSystem ? (
@@ -662,9 +731,9 @@ const TaskBoard = () => {
                                 )}
                             </div>
 
-                            <div className="w-full md:w-72 bg-[#181818] md:border-l border-t md:border-t-0 border-vps-gray/20 p-4 md:p-6 flex flex-col gap-5 overflow-y-visible md:overflow-y-auto shrink-0 pb-10 md:pb-6">
+                            <div className="flex w-full shrink-0 flex-col gap-5 border-t border-vps-gray/20 bg-[#181818] p-4 pb-6 md:w-80 md:overflow-y-auto md:border-l md:border-t-0 md:p-5 custom-scrollbar">
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 block">Cài đặt Thẻ</label>
+                                    <label className="mb-3 block text-xs font-semibold uppercase tracking-[0.12em] text-vps-ivory/45">Cài đặt công việc</label>
                                     {isManager && (
                                         <div className="mb-4">
                                             <label className="flex items-center gap-2 text-xs font-medium text-gray-400 mb-1.5"><ImageIcon className="w-3.5 h-3.5" /> Link Ảnh bìa</label>
@@ -719,8 +788,8 @@ const TaskBoard = () => {
                                     </div>
                                 </div>
                                 {isManager && (
-                                    <div className="mt-4 pt-4 border-t border-vps-gray/20">
-                                        <button onClick={handleSaveTask} className="w-full py-3 md:py-3 bg-vps-gold text-black font-bold rounded-xl hover:scale-[1.02] transition-transform shadow-[0_0_15px_rgba(212,175,55,0.3)]">Lưu thay đổi</button>
+                                    <div className="sticky bottom-0 -mx-4 mt-2 border-t border-vps-gray/20 bg-[#181818] p-4 md:static md:mx-0 md:mt-4 md:border-0 md:bg-transparent md:p-0">
+                                        <button onClick={handleSaveTask} className="min-h-11 w-full rounded-xl bg-vps-gold px-4 text-sm font-semibold text-vps-black transition-transform hover:scale-[1.01]">Lưu thay đổi</button>
                                     </div>
                                 )}
                             </div>

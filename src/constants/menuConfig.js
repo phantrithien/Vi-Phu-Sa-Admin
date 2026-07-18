@@ -1,6 +1,7 @@
 import {
     LayoutDashboard,
     Users,
+    Handshake,
     BriefcaseBusiness,
     Clapperboard,
     Scissors,
@@ -11,6 +12,7 @@ import {
     BookOpen,
     BarChart3,
     Settings,
+    Contact,
 } from 'lucide-react';
 
 import { ROLES } from './roles';
@@ -65,6 +67,13 @@ export const MENU_ITEMS = [
         permissions: [PERMISSIONS.VIEW_CRM],
     },
     {
+        path: '/clients',
+        name: 'Clients',
+        icon: Handshake,
+        roles: [ROLES.OWNER, ROLES.ADMIN, ROLES.PRODUCER, ROLES.VIEWER, ROLES.FOUNDER, ROLES.BACK_OFFICE, ROLES.FRONT_OFFICE, ROLES.STAFF],
+        permissions: [PERMISSIONS.CLIENT_READ],
+    },
+    {
         path: '/projects',
         name: 'Projects',
         icon: BriefcaseBusiness,
@@ -83,7 +92,14 @@ export const MENU_ITEMS = [
         name: 'Production',
         icon: Clapperboard,
         roles: [ROLES.FOUNDER, ROLES.ADMIN, ROLES.BACK_OFFICE, ROLES.FRONT_OFFICE, ROLES.STAFF, ROLES.FREELANCER],
-        permissions: [PERMISSIONS.VIEW_PRODUCTION],
+        permissions: [PERMISSIONS.PRODUCTION_READ],
+    },
+    {
+        path: '/crew',
+        name: 'Crew',
+        icon: Contact,
+        roles: [ROLES.FOUNDER, ROLES.ADMIN, ROLES.BACK_OFFICE, ROLES.FRONT_OFFICE, ROLES.STAFF, ROLES.FREELANCER],
+        permissions: [PERMISSIONS.CREW_READ],
     },
     {
         path: '/tasks',
